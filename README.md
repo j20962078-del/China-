@@ -56,7 +56,14 @@
 - `.github/workflows` — облачная сборка APK/AAB
 - `tools/static_check.py` — статические проверки
 
-## Как получить APK только с телефона (GitHub Actions)
+## Сборка APK в облаке Unity (Unity Build Automation) — рабочий путь с телефона
+Unity больше не поддерживает ручную активацию личной лицензии, поэтому сборка через GitHub Actions (game-ci) для бесплатного
+аккаунта не работает. Вместо неё: cloud.unity.com → проект → DevOps → Build Automation → подключить репозиторий GitHub →
+новая цель сборки: платформа Android, версия Unity 6000.0.x. В «Advanced» указать
+**Pre-export method:** `ChinaFishing.EditorTools.ProjectBuilder.Prepare` (создаёт сцену, URP, материалы и настройки игрока).
+Бесплатно в месяц: 200 минут Windows и 100 минут Linux.
+
+## (Устарело) Как получить APK с телефона через GitHub Actions
 1. Зарегистрируйтесь на github.com, создайте **приватный** репозиторий.
 2. Загрузите содержимое архива (Add file → Upload files), включая скрытую папку `.github` и папку `tools`.
 3. **Лицензия Unity (один раз).** Actions → «1. Получить файл активации Unity» → Run workflow → скачайте артефакт

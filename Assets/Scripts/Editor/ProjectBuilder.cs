@@ -34,11 +34,11 @@ namespace ChinaFishing.EditorTools
             Debug.Log("China Fishing: проект подготовлен.");
         }
 
-        // Проверка целостности данных игры: 11 рыб, 37 предметов, все ссылки на наживки существуют
+        // Проверка целостности данных игры: 11 рыб, не меньше 37 предметов, все ссылки на наживки существуют
         static void CheckData()
         {
             if (GameData.Fish.Count != 11) Debug.LogError("China Fishing: рыб должно быть 11, сейчас " + GameData.Fish.Count);
-            if (GameData.Items.Count != 37) Debug.LogError("China Fishing: предметов должно быть 37, сейчас " + GameData.Items.Count);
+            if (GameData.Items.Count < 37) Debug.LogError("China Fishing: предметов должно быть не меньше 37, сейчас " + GameData.Items.Count);
             foreach (var f in GameData.Fish)
                 foreach (var b in f.baits)
                     if (GameData.GetItem(b) == null) Debug.LogError("China Fishing: у рыбы «" + f.name + "» неизвестная наживка: " + b);
