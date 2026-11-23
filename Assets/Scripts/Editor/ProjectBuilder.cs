@@ -140,28 +140,28 @@ namespace ChinaFishing.EditorTools
         }
 
         // Без файла глобальных настроек URP в собранной игре графика не запускается (ошибка при создании конвейера).
-        // Используем рефлексию, чтобы не зависеть от точной сигнатуры метода в разных версиях URP.
+        // Тип в новых версиях закрытый (internal), поэтому всё делаем по имени, через рефлексию.
         const string GlobalSettingsPath = "Assets/UniversalRenderPipelineGlobalSettings.asset";
         static void EnsureUrpGlobalSettings()
         {
             try
             {
-                var t = typeof(UniversalRenderPipelineGlobalSettings);
+                var t = typeof(UniversalRenderPipeline).Assembly.GetType("UnityEngine.Rendering.Universal.UniversalRenderPipelineGlobalSettings");
+                if (t == null) { Debug.LogError("China Fishing: тип глобальных настроек URP не найден"); return; }
                 var flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public |
-                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.FlattenHierarchy;
-                object res = null;
-                var m = t.GetMethod("Ensure", flags, null, new[] { typeof(bool) }, null);
-                if (m != null) res = m.Invoke(null, new object[] { true });
-                else
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly;
+                UnityEngine.Object gs = null;
+                for (var c = t; c != null && gs == null; c = c.BaseType)
                 {
-                    m = t.GetMethod("Ensure", flags, null, Type.EmptyTypes, null);
-                    if (m != null) res = m.Invoke(null, null);
+                    var m = c.GetMethod("Ensure", flags, null, new[] { typeof(bool) }, null);
+                    if (m != null) { gs = m.Invoke(null, new object[] { true }) as UnityEngine.Object; continue; }
+                    m = c.GetMethod("Ensure", flags, null, Type.EmptyTypes, null);
+                    if (m != null) gs = m.Invoke(null, null) as UnityEngine.Object;
                 }
-                var gs = res as UniversalRenderPipelineGlobalSettings;
-                if (gs == null) gs = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineGlobalSettings>(GlobalSettingsPath);
+                if (gs == null) gs = AssetDatabase.LoadAssetAtPath(GlobalSettingsPath, t);
                 if (gs == null)
                 {
-                    gs = ScriptableObject.CreateInstance<UniversalRenderPipelineGlobalSettings>();
+                    gs = ScriptableObject.CreateInstance(t);
                     AssetDatabase.CreateAsset(gs, GlobalSettingsPath);
                 }
                 var egs = typeof(Editor).Assembly.GetType("UnityEditor.Rendering.EditorGraphicsSettings");
