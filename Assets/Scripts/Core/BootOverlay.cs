@@ -36,6 +36,12 @@ namespace ChinaFishing
             int nl0 = msg.IndexOf('\n');
             string line = nl0 > 0 ? msg.Substring(0, nl0) : msg;
             if (line.Length > 260) line = line.Substring(0, 260) + "…";
+            if (type == LogType.Exception && !string.IsNullOrEmpty(stack))
+            {
+                // где именно произошла ошибка: первая строка стека (метод в нашем коде)
+                foreach (var l in stack.Split('\n'))
+                    if (l.Contains("ChinaFishing")) { line += "\n   → " + (l.Length > 160 ? l.Substring(0, 160) : l); break; }
+            }
             if (errors.Count > 0 && errors[errors.Count - 1] == line) return;   // одинаковые подряд не повторяем
             errors.Add(line);
             if (errors.Count > 6) errors.RemoveAt(0);

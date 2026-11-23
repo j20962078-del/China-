@@ -1,0 +1,8 @@
+<linker>
+  <!-- Не вырезать физику: коллайдеры создаются из кода -->
+  <assembly fullname="UnityEngine.PhysicsModule" preserve="all"/>
+  <assembly fullname="UnityEngine.TerrainPhysicsModule" preserve="all"/>
+  <assembly fullname="UnityEngine.TerrainModule" preserve="all"/>
+  <assembly fullname="UnityEngine.AudioModule" preserve="all"/>
+  <assembly fullname="UnityEngine.ParticleSystemModule" preserve="all"/>
+</linker>
