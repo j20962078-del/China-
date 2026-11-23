@@ -23,15 +23,23 @@ namespace ChinaFishing.EditorTools
             Directory.CreateDirectory("Assets/Resources");
             Directory.CreateDirectory("Assets/Settings");
             Directory.CreateDirectory("Assets/Scenes");
+            PrepareAssets();
+            CreateScene();
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            Debug.Log("China Fishing: проект подготовлен.");
+        }
+
+        // Всё, кроме сцены: материалы, URP, шейдеры, настройки игрока. Повторяемо.
+        public static void PrepareAssets()
+        {
+            Directory.CreateDirectory("Assets/Resources");
+            Directory.CreateDirectory("Assets/Settings");
             CheckData();
             CreateMaterials();
             SetupUrp();
             IncludeShaders();
             SetupPlayer();
-            CreateScene();
-            AssetDatabase.SaveAssets();
-            AssetDatabase.Refresh();
-            Debug.Log("China Fishing: проект подготовлен.");
         }
 
         // Проверка целостности данных игры: 11 рыб, не меньше 37 предметов, все ссылки на наживки существуют
@@ -188,7 +196,7 @@ namespace ChinaFishing.EditorTools
             if (PlayerSettings.Android.bundleVersionCode < 1) PlayerSettings.Android.bundleVersionCode = 1;
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
-            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
+            PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToPortrait = false;
             PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
@@ -221,6 +229,12 @@ namespace ChinaFishing.EditorTools
 
         static void CreateScene()
         {
+            if (File.Exists(ScenePath))
+            {
+                // Сцена уже лежит в репозитории — только подключаем её к сборке
+                EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
+                return;
+            }
             var scene = EditorSceneManager.NewScene(NewSceneSetup.DefaultGameObjects, NewSceneMode.Single);
             foreach (var l in UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None)) UnityEngine.Object.DestroyImmediate(l.gameObject);
             var cam = Camera.main;
@@ -271,6 +285,20 @@ namespace ChinaFishing.EditorTools
 
         [MenuItem("China Fishing/3. Собрать AAB (Google Play)")]
         public static void BuildAab() { Run("build/Android/ChinaFishing.aab", true); }
+    }
+}
+
+namespace ChinaFishing.EditorTools
+{
+    // Запускается перед любой сборкой (в том числе в облаке Unity): готовит материалы, URP и настройки игрока.
+    public class CloudBuildPrepare : UnityEditor.Build.IPreprocessBuildWithReport
+    {
+        public int callbackOrder { get { return -1000; } }
+        public void OnPreprocessBuild(UnityEditor.Build.Reporting.BuildReport report)
+        {
+            try { ProjectBuilder.PrepareAssets(); AssetDatabase.SaveAssets(); Debug.Log("China Fishing: проект подготовлен перед сборкой."); }
+            catch (Exception e) { Debug.LogError("China Fishing: ошибка подготовки перед сборкой: " + e); }
+        }
     }
 }
 #endif
