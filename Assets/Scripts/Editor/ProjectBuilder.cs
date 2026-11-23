@@ -139,6 +139,41 @@ namespace ChinaFishing.EditorTools
             return rp;
         }
 
+        // Без файла глобальных настроек URP в собранной игре графика не запускается (ошибка при создании конвейера).
+        // Используем рефлексию, чтобы не зависеть от точной сигнатуры метода в разных версиях URP.
+        const string GlobalSettingsPath = "Assets/UniversalRenderPipelineGlobalSettings.asset";
+        static void EnsureUrpGlobalSettings()
+        {
+            try
+            {
+                var t = typeof(UniversalRenderPipelineGlobalSettings);
+                var flags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public |
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.FlattenHierarchy;
+                object res = null;
+                var m = t.GetMethod("Ensure", flags, null, new[] { typeof(bool) }, null);
+                if (m != null) res = m.Invoke(null, new object[] { true });
+                else
+                {
+                    m = t.GetMethod("Ensure", flags, null, Type.EmptyTypes, null);
+                    if (m != null) res = m.Invoke(null, null);
+                }
+                var gs = res as UniversalRenderPipelineGlobalSettings;
+                if (gs == null) gs = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineGlobalSettings>(GlobalSettingsPath);
+                if (gs == null)
+                {
+                    gs = ScriptableObject.CreateInstance<UniversalRenderPipelineGlobalSettings>();
+                    AssetDatabase.CreateAsset(gs, GlobalSettingsPath);
+                }
+                var egs = typeof(Editor).Assembly.GetType("UnityEditor.Rendering.EditorGraphicsSettings");
+                var set = egs != null ? egs.GetMethod("SetRenderPipelineGlobalSettingsAsset") : null;
+                if (set != null) set.MakeGenericMethod(typeof(UniversalRenderPipeline)).Invoke(null, new object[] { gs });
+                EditorUtility.SetDirty(gs);
+                AssetDatabase.SaveAssets();
+                Debug.Log("China Fishing: глобальные настройки URP: " + AssetDatabase.GetAssetPath(gs));
+            }
+            catch (Exception e) { Debug.LogError("China Fishing: не удалось подготовить глобальные настройки URP: " + e); }
+        }
+
         static void SetupUrp()
         {
             var rd = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath);
@@ -151,6 +186,7 @@ namespace ChinaFishing.EditorTools
             var med = MakeUrp("URP_Medium", rd, 1f, 1, true, 1024, 35f, false);
             MakeUrp("URP_High", rd, 1f, 2, true, 2048, 70f, true);
 
+            EnsureUrpGlobalSettings();
             GraphicsSettings.defaultRenderPipeline = med;
             int cur = QualitySettings.GetQualityLevel();
             for (int i = 0; i < QualitySettings.names.Length; i++)

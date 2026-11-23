@@ -409,7 +409,8 @@ namespace ChinaFishing
         {
             int q = Mathf.Clamp(S.quality, 0, 2);
             var rp = Resources.Load<UnityEngine.Rendering.RenderPipelineAsset>(q == 0 ? "URP_Low" : q == 1 ? "URP_Medium" : "URP_High");
-            if (rp != null) QualitySettings.renderPipeline = rp;
+            try { if (rp != null && QualitySettings.renderPipeline != rp) QualitySettings.renderPipeline = rp; }
+            catch (System.Exception e) { Debug.LogWarning("China Fishing: не удалось сменить качество графики: " + e.Message); }
             QualitySettings.vSyncCount = 0;
             QualitySettings.lodBias = q == 0 ? 0.6f : q == 1 ? 1f : 1.5f;
             QualitySettings.anisotropicFiltering = q == 2 ? AnisotropicFiltering.Enable : AnisotropicFiltering.Disable;

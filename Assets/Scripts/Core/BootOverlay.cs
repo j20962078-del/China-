@@ -33,14 +33,12 @@ namespace ChinaFishing
         static void OnLog(string msg, string stack, LogType type)
         {
             if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert) return;
-            string line = msg.Length > 420 ? msg.Substring(0, 420) + "…" : msg;
-            if (type == LogType.Exception && !string.IsNullOrEmpty(stack))
-            {
-                int nl = stack.IndexOf('\n');
-                line += "\n" + (nl > 0 ? stack.Substring(0, nl) : stack);
-            }
+            int nl0 = msg.IndexOf('\n');
+            string line = nl0 > 0 ? msg.Substring(0, nl0) : msg;
+            if (line.Length > 260) line = line.Substring(0, 260) + "…";
+            if (errors.Count > 0 && errors[errors.Count - 1] == line) return;   // одинаковые подряд не повторяем
             errors.Add(line);
-            if (errors.Count > 5) errors.RemoveAt(0);
+            if (errors.Count > 6) errors.RemoveAt(0);
         }
 
         void OnGUI()
