@@ -232,24 +232,24 @@ namespace ChinaFishing
             if (waterMat != null) waterMat = new Material(waterMat);
             else
             {
-                var sh = Shader.Find("Universal Render Pipeline/Lit");
-                if (sh == null) sh = Shader.Find("Standard");
+                var sh = Shader.Find("Standard");
+                if (sh == null) sh = Shader.Find("Legacy Shaders/Diffuse");
                 waterMat = new Material(sh);
-                waterMat.SetFloat("_Surface", 1f);
+                Mats.Flt(waterMat, "_Mode", 2f);
                 waterMat.SetOverrideTag("RenderType", "Transparent");
-                waterMat.SetInt("_SrcBlend", 5); waterMat.SetInt("_DstBlend", 10); waterMat.SetInt("_ZWrite", 0);
-                waterMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                if (waterMat.HasProperty("_SrcBlend")) { waterMat.SetInt("_SrcBlend", 5); waterMat.SetInt("_DstBlend", 10); waterMat.SetInt("_ZWrite", 0); }
+                waterMat.EnableKeyword("_ALPHABLEND_ON");
                 waterMat.EnableKeyword("_NORMALMAP");
                 waterMat.renderQueue = 3000;
             }
             var col = new Color(0.10f, 0.32f, 0.36f, 0.78f);
-            waterMat.SetColor("_BaseColor", col); waterMat.color = col;
-            waterMat.SetFloat("_Smoothness", 0.95f);
-            waterMat.SetFloat("_Metallic", 0f);
-            waterMat.SetTexture("_BumpMap", waterNormal);
-            waterMat.SetFloat("_BumpScale", 0.6f);
-            waterMat.SetTextureScale("_BumpMap", new Vector2(60, 60));
-            waterMat.SetTextureScale("_BaseMap", new Vector2(60, 60));
+            Mats.Col(waterMat, "_Color", col); Mats.Col(waterMat, "_BaseColor", col);
+            Mats.Flt(waterMat, "_Glossiness", 0.95f); Mats.Flt(waterMat, "_Smoothness", 0.95f);
+            Mats.Flt(waterMat, "_Metallic", 0f);
+            if (waterMat.HasProperty("_BumpMap")) { waterMat.SetTexture("_BumpMap", waterNormal); waterMat.SetTextureScale("_BumpMap", new Vector2(60, 60)); }
+            Mats.Flt(waterMat, "_BumpScale", 0.6f);
+            if (waterMat.HasProperty("_MainTex")) waterMat.SetTextureScale("_MainTex", new Vector2(60, 60));
+            if (waterMat.HasProperty("_BaseMap")) waterMat.SetTextureScale("_BaseMap", new Vector2(60, 60));
             g.GetComponent<Renderer>().sharedMaterial = waterMat;
             water = g.transform;
             g.AddComponent<WaterAnimator>().Init(waterMat);
@@ -759,8 +759,9 @@ namespace ChinaFishing
         {
             if (m == null) return;
             off += new Vector2(0.004f, 0.0025f) * Time.deltaTime * 6f;
-            m.SetTextureOffset("_BumpMap", off);
-            m.SetTextureOffset("_BaseMap", off * 0.5f);
+            if (m.HasProperty("_BumpMap")) m.SetTextureOffset("_BumpMap", off);
+            if (m.HasProperty("_MainTex")) m.SetTextureOffset("_MainTex", off * 0.5f);
+            if (m.HasProperty("_BaseMap")) m.SetTextureOffset("_BaseMap", off * 0.5f);
         }
     }
 }

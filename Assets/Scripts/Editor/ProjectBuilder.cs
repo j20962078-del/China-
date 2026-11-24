@@ -37,7 +37,7 @@ namespace ChinaFishing.EditorTools
             Directory.CreateDirectory("Assets/Settings");
             CheckData();
             CreateMaterials();
-            SetupUrp();
+            UseBuiltInPipeline();
             IncludeShaders();
             SetupPlayer();
         }
@@ -64,19 +64,20 @@ namespace ChinaFishing.EditorTools
 
         static void CreateMaterials()
         {
-            var lit = MakeMat("Assets/Resources/Mat_Lit.mat", "Universal Render Pipeline/Lit");
+            var lit = MakeMat("Assets/Resources/Mat_Lit.mat", "Standard");
             if (lit != null) EditorUtility.SetDirty(lit);
 
-            var water = MakeMat("Assets/Resources/Mat_Water.mat", "Universal Render Pipeline/Lit");
+            var water = MakeMat("Assets/Resources/Mat_Water.mat", "Standard");
             if (water != null)
             {
-                water.SetFloat("_Surface", 1f);
-                water.SetFloat("_Blend", 0f);
+                water.SetFloat("_Mode", 2f);                 // Fade (прозрачность по альфе)
                 water.SetFloat("_SrcBlend", 5f);
                 water.SetFloat("_DstBlend", 10f);
                 water.SetFloat("_ZWrite", 0f);
                 water.SetOverrideTag("RenderType", "Transparent");
-                water.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                water.EnableKeyword("_ALPHABLEND_ON");
+                water.DisableKeyword("_ALPHATEST_ON");
+                water.DisableKeyword("_ALPHAPREMULTIPLY_ON");
                 water.EnableKeyword("_NORMALMAP");
                 water.renderQueue = (int)RenderQueue.Transparent;
                 const string flat = "Assets/Resources/waterflat.png";
@@ -94,7 +95,7 @@ namespace ChinaFishing.EditorTools
                 EditorUtility.SetDirty(water);
             }
 
-            var terr = MakeMat("Assets/Resources/Mat_Terrain.mat", "Universal Render Pipeline/Terrain/Lit");
+            var terr = MakeMat("Assets/Resources/Mat_Terrain.mat", "Nature/Terrain/Standard");
             if (terr != null) EditorUtility.SetDirty(terr);
         }
 
@@ -182,6 +183,19 @@ namespace ChinaFishing.EditorTools
             catch (Exception e) { Debug.LogError("China Fishing: не удалось подготовить глобальные настройки URP: " + e); }
         }
 
+        // Встроенный конвейер (Built-in): в облачной сборке без редактора URP не стартовал, поэтому используем его.
+        static void UseBuiltInPipeline()
+        {
+            GraphicsSettings.defaultRenderPipeline = null;
+            int cur = QualitySettings.GetQualityLevel();
+            for (int i = 0; i < QualitySettings.names.Length; i++)
+            {
+                QualitySettings.SetQualityLevel(i, false);
+                QualitySettings.renderPipeline = null;
+            }
+            QualitySettings.SetQualityLevel(cur, false);
+        }
+
         static void SetupUrp()
         {
             var rd = AssetDatabase.LoadAssetAtPath<UniversalRendererData>(RendererPath);
@@ -213,7 +227,7 @@ namespace ChinaFishing.EditorTools
             var arr = so.FindProperty("m_AlwaysIncludedShaders");
             if (arr == null) { Debug.LogWarning("China Fishing: нет списка Always Included Shaders"); return; }
             string[] names = {
-                "Universal Render Pipeline/Lit", "Universal Render Pipeline/Terrain/Lit", "Universal Render Pipeline/Unlit",
+                "Standard", "Nature/Terrain/Standard", "Legacy Shaders/Diffuse", "Unlit/Color",
                 "Skybox/Procedural", "Hidden/TerrainEngine/Details/BillboardWavingDoublePass",
                 "Hidden/TerrainEngine/Details/WavingDoublePass", "Hidden/TerrainEngine/Details/Vertexlit",
                 "Hidden/TerrainEngine/BillboardTree"

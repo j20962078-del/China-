@@ -17,6 +17,8 @@ namespace ChinaFishing
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
         {
+            Application.SetStackTraceLogType(LogType.Exception, StackTraceLogType.ScriptOnly);
+            Application.SetStackTraceLogType(LogType.Error, StackTraceLogType.ScriptOnly);
             if (inst == null)
             {
                 var g = new GameObject("Диагностика");
@@ -67,7 +69,7 @@ namespace ChinaFishing
             {
                 var rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
                 GUI.Label(new Rect(20, Screen.height - Screen.height / 10f, Screen.width - 40, Screen.height / 10f),
-                    "Графика: " + (rp != null ? rp.name : "НЕТ (URP не создан)") + "  ·  API: " + SystemInfo.graphicsDeviceType, info);
+                    "Графика: " + (rp != null ? "URP " + rp.name : "встроенная (Built-in)") + "  ·  API: " + SystemInfo.graphicsDeviceType, info);
             }
             if (!ready && Time.realtimeSinceStartup - t0 < 25f)
             {

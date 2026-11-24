@@ -16,6 +16,10 @@ namespace ChinaFishing
             return litTemplate;
         }
 
+        // Безопасная установка свойств: у разных шейдеров набор свойств разный, а Unity ругается на отсутствующие
+        public static void Col(Material m, string n, Color c) { if (m != null && m.HasProperty(n)) m.SetColor(n, c); }
+        public static void Flt(Material m, string n, float v) { if (m != null && m.HasProperty(n)) m.SetFloat(n, v); }
+
         public static Material Lit(Color c, float smooth = 0.15f, float metal = 0f)
         {
             string key = ((Color32)c).r + "_" + ((Color32)c).g + "_" + ((Color32)c).b + "_" + smooth + "_" + metal;
@@ -25,14 +29,15 @@ namespace ChinaFishing
             if (t != null) m = new Material(t);
             else
             {
-                var sh = Shader.Find("Universal Render Pipeline/Lit");
-                if (sh == null) sh = Shader.Find("Standard");
+                var sh = Shader.Find("Standard");
+                if (sh == null) sh = Shader.Find("Legacy Shaders/Diffuse");
                 m = new Material(sh);
             }
-            m.SetColor("_BaseColor", c);
-            m.SetColor("_Color", c);
-            m.SetFloat("_Smoothness", smooth);
-            m.SetFloat("_Metallic", metal);
+            Col(m, "_Color", c);
+            Col(m, "_BaseColor", c);
+            Flt(m, "_Glossiness", smooth);
+            Flt(m, "_Smoothness", smooth);
+            Flt(m, "_Metallic", metal);
             cache[key] = m;
             return m;
         }
