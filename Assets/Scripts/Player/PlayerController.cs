@@ -202,6 +202,21 @@ namespace ChinaFishing
         readonly RaycastHit[] hits = new RaycastHit[12];
         Vector3 smoothPivot;
         public bool fishingView;
+        public bool firstPerson;   // вид от первого лица
+
+        // Переключение вида: в первом лице тело скрывается (остаётся только удочка), камера в «глазах» персонажа
+        public void SetFirstPerson(bool on)
+        {
+            firstPerson = on;
+            if (target == null) return;
+            foreach (var r in target.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r is LineRenderer) continue;
+                bool rod = false;
+                for (var t = r.transform; t != null && t != target; t = t.parent) if (t.name == "Удочка") { rod = true; break; }
+                r.enabled = !on || rod;
+            }
+        }
 
         void Awake()
         {
@@ -225,7 +240,15 @@ namespace ChinaFishing
             Inp.LookDelta = Vector2.zero;
             float sens = 0.16f * (Screen.dpi > 0 ? Mathf.Clamp(300f / Screen.dpi, 0.6f, 1.6f) : 1f);
             yaw += d.x * sens;
-            pitch = Mathf.Clamp(pitch - d.y * sens, -8f, 62f);
+            pitch = Mathf.Clamp(pitch - d.y * sens, firstPerson ? -80f : -8f, firstPerson ? 80f : 62f);
+            if (firstPerson)
+            {
+                Inp.Zoom = 0;
+                var eye = target.position + Vector3.up * 1.62f + Quaternion.Euler(0, yaw, 0) * Vector3.forward * 0.14f;
+                smoothPivot = eye;
+                transform.SetPositionAndRotation(eye, Quaternion.Euler(pitch, yaw, 0));
+                return;
+            }
             if (Mathf.Abs(Inp.Zoom) > 0.001f) { dist = Mathf.Clamp(dist - Inp.Zoom, 2.6f, 9f); Inp.Zoom = 0; }
 
             var pivotTarget = target.position + Vector3.up * 1.55f;

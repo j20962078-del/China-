@@ -126,6 +126,11 @@ namespace ChinaFishing
             B(hudR, "Рюкзак", UIKit.Panel2, new Vector2(1, 1), new Vector2(-250, -20), new Vector2(210, 90), () => Open(invR, true), 34);
             B(hudR, "Карта", UIKit.Panel2, new Vector2(1, 1), new Vector2(-480, -20), new Vector2(210, 90), () => Open(mapR, true), 34);
             B(hudR, "Настройки", UIKit.Panel2, new Vector2(1, 1), new Vector2(-710, -20), new Vector2(260, 90), () => Open(setR, true), 34);
+            B(hudR, "Вид", UIKit.Panel2, new Vector2(1, 1), new Vector2(-990, -20), new Vector2(250, 90), () =>
+            {
+                var rg = GameManager.I != null ? GameManager.I.rig : null;
+                if (rg != null) rg.SetFirstPerson(!rg.firstPerson);
+            }, 34);
 
             // сообщения
             var mb = UIKit.Img(hudR, new Color(0, 0, 0, 0.55f)); UIKit.At(mb.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -170), new Vector2(1100, 90));

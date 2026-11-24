@@ -210,9 +210,8 @@ namespace ChinaFishing
             go.transform.SetParent(root, false);
             go.transform.position = new Vector3(-Size / 2, MinY, -Size / 2);
             terrain = go.GetComponent<Terrain>();
-            var tmat = Resources.Load<Material>("Mat_Terrain");
-            if (tmat != null) terrain.materialTemplate = tmat;
-            terrain.drawInstanced = true;
+            // Материал ландшафта не подменяем: стандартный материал движка надёжно рисуется в сборке
+            terrain.drawInstanced = false;
             terrain.heightmapPixelError = 8;
             terrain.detailObjectDistance = Game.S.quality == 0 ? 35f : Game.S.quality == 1 ? 60f : 90f;
             terrain.detailObjectDensity = Game.S.quality == 0 ? 0.4f : Game.S.quality == 1 ? 0.7f : 1f;

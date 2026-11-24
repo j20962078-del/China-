@@ -227,7 +227,9 @@ namespace ChinaFishing.EditorTools
             var arr = so.FindProperty("m_AlwaysIncludedShaders");
             if (arr == null) { Debug.LogWarning("China Fishing: нет списка Always Included Shaders"); return; }
             string[] names = {
-                "Standard", "Nature/Terrain/Standard", "Legacy Shaders/Diffuse", "Unlit/Color",
+                "Standard", "Nature/Terrain/Standard", "Nature/Terrain/Diffuse", "Hidden/TerrainEngine/Splatmap/Standard-Base",
+                "Hidden/TerrainEngine/Splatmap/Standard-AddPass", "Hidden/TerrainEngine/Splatmap/Diffuse",
+                "Legacy Shaders/Diffuse", "Unlit/Color",
                 "Skybox/Procedural", "Hidden/TerrainEngine/Details/BillboardWavingDoublePass",
                 "Hidden/TerrainEngine/Details/WavingDoublePass", "Hidden/TerrainEngine/Details/Vertexlit",
                 "Hidden/TerrainEngine/BillboardTree"
