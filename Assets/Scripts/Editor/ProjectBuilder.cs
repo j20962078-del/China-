@@ -165,8 +165,16 @@ namespace ChinaFishing.EditorTools
                     AssetDatabase.CreateAsset(gs, GlobalSettingsPath);
                 }
                 var egs = typeof(Editor).Assembly.GetType("UnityEditor.Rendering.EditorGraphicsSettings");
-                var set = egs != null ? egs.GetMethod("SetRenderPipelineGlobalSettingsAsset") : null;
-                if (set != null) set.MakeGenericMethod(typeof(UniversalRenderPipeline)).Invoke(null, new object[] { gs });
+                if (egs != null)
+                {
+                    foreach (var mi in egs.GetMethods(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic))
+                    {
+                        if (mi.Name != "SetRenderPipelineGlobalSettingsAsset" || !mi.IsGenericMethodDefinition) continue;
+                        if (mi.GetParameters().Length != 1) continue;
+                        mi.MakeGenericMethod(typeof(UniversalRenderPipeline)).Invoke(null, new object[] { gs });
+                        break;
+                    }
+                }
                 EditorUtility.SetDirty(gs);
                 AssetDatabase.SaveAssets();
                 Debug.Log("China Fishing: глобальные настройки URP: " + AssetDatabase.GetAssetPath(gs));

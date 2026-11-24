@@ -33,18 +33,22 @@ namespace ChinaFishing
         static void OnLog(string msg, string stack, LogType type)
         {
             if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert) return;
-            int nl0 = msg.IndexOf('\n');
-            string line = nl0 > 0 ? msg.Substring(0, nl0) : msg;
-            if (line.Length > 260) line = line.Substring(0, 260) + "…";
-            if (type == LogType.Exception && !string.IsNullOrEmpty(stack))
+            var lines = new List<string>();
+            foreach (var l in msg.Split('\n')) { var t = l.Trim(); if (t.Length > 0) lines.Add(t); }
+            if (!string.IsNullOrEmpty(stack))
+                foreach (var l in stack.Split('\n')) { var t = l.Trim(); if (t.Length > 0) lines.Add(t); }
+            string line = lines.Count > 0 ? lines[0] : msg;
+            if (line.Length > 200) line = line.Substring(0, 200) + "…";
+            int shown = 0;
+            for (int i = 1; i < lines.Count && shown < 3; i++)
             {
-                // где именно произошла ошибка: первая строка стека (метод в нашем коде)
-                foreach (var l in stack.Split('\n'))
-                    if (l.Contains("ChinaFishing")) { line += "\n   → " + (l.Length > 160 ? l.Substring(0, 160) : l); break; }
+                if (lines[i].StartsWith("UnityEngine.") && !lines[i].Contains("Rendering")) continue;
+                string l = lines[i].Length > 170 ? lines[i].Substring(0, 170) : lines[i];
+                line += "\n   " + l; shown++;
             }
             if (errors.Count > 0 && errors[errors.Count - 1] == line) return;   // одинаковые подряд не повторяем
             errors.Add(line);
-            if (errors.Count > 6) errors.RemoveAt(0);
+            if (errors.Count > 4) errors.RemoveAt(0);
         }
 
         void OnGUI()
@@ -59,6 +63,12 @@ namespace ChinaFishing
             }
             bool ready = GameManager.I != null && GameManager.I.Ready;
             float top = 16f;
+            if (Time.realtimeSinceStartup - t0 < 40f)
+            {
+                var rp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline;
+                GUI.Label(new Rect(20, Screen.height - Screen.height / 10f, Screen.width - 40, Screen.height / 10f),
+                    "Графика: " + (rp != null ? rp.name : "НЕТ (URP не создан)") + "  ·  API: " + SystemInfo.graphicsDeviceType, info);
+            }
             if (!ready && Time.realtimeSinceStartup - t0 < 25f)
             {
                 GUI.Label(new Rect(20, top, Screen.width - 40, Screen.height / 8f), "China Fishing: загрузка…", info);
