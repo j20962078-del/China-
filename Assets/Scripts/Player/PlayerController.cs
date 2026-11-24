@@ -29,30 +29,60 @@ namespace ChinaFishing
             m.root = new GameObject("Модель").transform; m.root.SetParent(parent, false);
             var skin = Mats.Lit(225, 180, 150, 0.2f);
             var jacket = Mats.Lit(70, 100, 60, 0.1f);
+            var jacketDark = Mats.Lit(52, 78, 46, 0.1f);
             var vest = Mats.Lit(190, 150, 70, 0.1f);
             var pants = Mats.Lit(60, 70, 95, 0.1f);
+            var pantsDark = Mats.Lit(46, 54, 76, 0.1f);
             var boot = Mats.Lit(45, 35, 28, 0.1f);
+            var sole = Mats.Lit(25, 20, 18, 0.1f);
             var hat = Mats.Lit(200, 190, 140, 0.1f);
+            var hair = Mats.Lit(70, 50, 35, 0.1f);
+            var pack = Mats.Lit(120, 85, 50, 0.1f);
+            var belt = Mats.Lit(35, 28, 22, 0.2f);
+            var dark = Mats.Lit(30, 30, 30, 0.3f);
 
+            // торс: грудь, жилет, пояс, таз
             m.torso = Pivot(m.root, "Торс", new Vector3(0, 1.28f, 0));
-            WorldBuilder.Prim(PrimitiveType.Capsule, m.torso, Vector3.zero, new Vector3(0.40f, 0.30f, 0.26f), jacket);
-            WorldBuilder.Prim(PrimitiveType.Cube, m.torso, new Vector3(0, -0.02f, 0.11f), new Vector3(0.40f, 0.36f, 0.05f), vest);
-            WorldBuilder.Prim(PrimitiveType.Cube, m.torso, new Vector3(0, -0.3f, 0), new Vector3(0.38f, 0.22f, 0.24f), pants);
-            m.head = Pivot(m.torso, "Голова", new Vector3(0, 0.42f, 0));
-            WorldBuilder.Prim(PrimitiveType.Sphere, m.head, Vector3.zero, new Vector3(0.23f, 0.26f, 0.24f), skin);
-            WorldBuilder.Prim(PrimitiveType.Cylinder, m.head, new Vector3(0, 0.10f, 0), new Vector3(0.27f, 0.045f, 0.27f), hat);
+            WorldBuilder.Prim(PrimitiveType.Capsule, m.torso, new Vector3(0, 0.05f, 0), new Vector3(0.46f, 0.30f, 0.30f), jacket);          // грудь
+            WorldBuilder.Prim(PrimitiveType.Cube, m.torso, new Vector3(0, 0.02f, 0.13f), new Vector3(0.40f, 0.38f, 0.05f), vest);            // жилет спереди
+            WorldBuilder.Prim(PrimitiveType.Cube, m.torso, new Vector3(0, 0.02f, -0.13f), new Vector3(0.40f, 0.38f, 0.04f), jacketDark);     // спина
+            WorldBuilder.Prim(PrimitiveType.Cube, m.torso, new Vector3(0, -0.20f, 0), new Vector3(0.40f, 0.07f, 0.27f), belt);                // пояс
+            WorldBuilder.Prim(PrimitiveType.Cube, m.torso, new Vector3(0, -0.34f, 0), new Vector3(0.40f, 0.22f, 0.26f), pants);               // таз
+            WorldBuilder.Prim(PrimitiveType.Cube, m.torso, new Vector3(0, 0.08f, -0.24f), new Vector3(0.30f, 0.36f, 0.14f), pack);            // рюкзак за спиной
+            WorldBuilder.Prim(PrimitiveType.Cube, m.torso, new Vector3(0, -0.06f, -0.26f), new Vector3(0.26f, 0.10f, 0.09f), jacketDark);     // карман рюкзака
+            // плечи
+            foreach (int sh in new[] { -1, 1 })
+                WorldBuilder.Prim(PrimitiveType.Sphere, m.torso, new Vector3(0.25f * sh, 0.24f, 0), new Vector3(0.17f, 0.15f, 0.17f), jacket);
+
+            // шея и голова
+            WorldBuilder.Prim(PrimitiveType.Cylinder, m.torso, new Vector3(0, 0.34f, 0), new Vector3(0.10f, 0.05f, 0.10f), skin);
+            m.head = Pivot(m.torso, "Голова", new Vector3(0, 0.50f, 0));
+            WorldBuilder.Prim(PrimitiveType.Sphere, m.head, Vector3.zero, new Vector3(0.23f, 0.26f, 0.24f), skin);                           // голова
+            WorldBuilder.Prim(PrimitiveType.Sphere, m.head, new Vector3(0, 0.0f, 0.12f), new Vector3(0.05f, 0.06f, 0.05f), skin);            // нос
+            WorldBuilder.Prim(PrimitiveType.Sphere, m.head, new Vector3(-0.115f, 0.0f, 0.0f), new Vector3(0.04f, 0.07f, 0.05f), skin);        // уши
+            WorldBuilder.Prim(PrimitiveType.Sphere, m.head, new Vector3(0.115f, 0.0f, 0.0f), new Vector3(0.04f, 0.07f, 0.05f), skin);
+            WorldBuilder.Prim(PrimitiveType.Sphere, m.head, new Vector3(0, 0.03f, -0.06f), new Vector3(0.22f, 0.20f, 0.18f), hair);          // волосы сзади
+            WorldBuilder.Prim(PrimitiveType.Cylinder, m.head, new Vector3(0, 0.10f, 0), new Vector3(0.27f, 0.045f, 0.27f), hat);             // шляпа
             WorldBuilder.Prim(PrimitiveType.Cylinder, m.head, new Vector3(0, 0.17f, 0), new Vector3(0.20f, 0.06f, 0.20f), hat);
-            WorldBuilder.Prim(PrimitiveType.Sphere, m.head, new Vector3(-0.05f, 0.02f, 0.10f), new Vector3(0.03f, 0.03f, 0.03f), Mats.Lit(30, 30, 30, 0.3f));
-            WorldBuilder.Prim(PrimitiveType.Sphere, m.head, new Vector3(0.05f, 0.02f, 0.10f), new Vector3(0.03f, 0.03f, 0.03f), Mats.Lit(30, 30, 30, 0.3f));
+            WorldBuilder.Prim(PrimitiveType.Sphere, m.head, new Vector3(-0.05f, 0.03f, 0.10f), new Vector3(0.03f, 0.03f, 0.03f), dark);       // глаза
+            WorldBuilder.Prim(PrimitiveType.Sphere, m.head, new Vector3(0.05f, 0.03f, 0.10f), new Vector3(0.03f, 0.03f, 0.03f), dark);
+            WorldBuilder.Prim(PrimitiveType.Cube, m.head, new Vector3(0, -0.07f, 0.105f), new Vector3(0.06f, 0.012f, 0.02f), dark);           // рот
 
             foreach (int s in new[] { -1, 1 })
             {
-                var leg = Pivot(m.root, s < 0 ? "Нога Л" : "Нога П", new Vector3(0.12f * s, 0.95f, 0));
-                WorldBuilder.Prim(PrimitiveType.Capsule, leg, new Vector3(0, -0.42f, 0), new Vector3(0.17f, 0.44f, 0.17f), pants);
-                WorldBuilder.Prim(PrimitiveType.Cube, leg, new Vector3(0, -0.88f, 0.05f), new Vector3(0.19f, 0.15f, 0.31f), boot);
-                var arm = Pivot(m.root, s < 0 ? "Рука Л" : "Рука П", new Vector3(0.27f * s, 1.5f, 0));
-                WorldBuilder.Prim(PrimitiveType.Capsule, arm, new Vector3(0, -0.28f, 0), new Vector3(0.11f, 0.29f, 0.11f), jacket);
-                WorldBuilder.Prim(PrimitiveType.Sphere, arm, new Vector3(0, -0.60f, 0), new Vector3(0.1f, 0.1f, 0.1f), skin);
+                // нога: бедро + голень + ботинок с подошвой
+                var leg = Pivot(m.root, s < 0 ? "Нога Л" : "Нога П", new Vector3(0.115f * s, 0.95f, 0));
+                WorldBuilder.Prim(PrimitiveType.Capsule, leg, new Vector3(0, -0.22f, 0), new Vector3(0.19f, 0.25f, 0.19f), pants);            // бедро
+                WorldBuilder.Prim(PrimitiveType.Capsule, leg, new Vector3(0, -0.60f, 0.005f), new Vector3(0.16f, 0.24f, 0.16f), pantsDark);   // голень
+                WorldBuilder.Prim(PrimitiveType.Cube, leg, new Vector3(0, -0.855f, 0.05f), new Vector3(0.18f, 0.13f, 0.30f), boot);
+                WorldBuilder.Prim(PrimitiveType.Cube, leg, new Vector3(0, -0.925f, 0.05f), new Vector3(0.19f, 0.035f, 0.31f), sole);
+
+                // рука: плечо -> предплечье -> кисть, чуть отведена от корпуса, чтобы читалась
+                var arm = Pivot(m.root, s < 0 ? "Рука Л" : "Рука П", new Vector3(0.30f * s, 1.52f, 0));
+                WorldBuilder.Prim(PrimitiveType.Capsule, arm, new Vector3(0, -0.17f, 0), new Vector3(0.13f, 0.18f, 0.13f), jacket);           // плечо
+                WorldBuilder.Prim(PrimitiveType.Capsule, arm, new Vector3(0, -0.42f, 0.01f), new Vector3(0.11f, 0.17f, 0.11f), jacketDark);   // предплечье
+                WorldBuilder.Prim(PrimitiveType.Cylinder, arm, new Vector3(0, -0.545f, 0.012f), new Vector3(0.115f, 0.02f, 0.115f), vest);    // манжета
+                WorldBuilder.Prim(PrimitiveType.Sphere, arm, new Vector3(0, -0.60f, 0.015f), new Vector3(0.10f, 0.11f, 0.10f), skin);         // кисть
                 if (s < 0) { m.legL = leg; m.armL = arm; } else { m.legR = leg; m.armR = arm; }
             }
 
@@ -177,7 +207,7 @@ namespace ChinaFishing
             m.legR.localRotation = Quaternion.Euler(-swing, 0, 0);
             m.torso.localPosition = new Vector3(0, 1.28f + Mathf.Abs(Mathf.Sin(walkPhase)) * 0.03f * sp + Mathf.Sin(Time.time * 1.6f) * 0.004f, 0);
             m.torso.localRotation = Quaternion.Euler(0, Mathf.Sin(walkPhase) * 4f * sp, 0);
-            m.armL.localRotation = Quaternion.Euler(-swing * 0.8f, 0, 4f);
+            m.armL.localRotation = Quaternion.Euler(-swing * 0.8f, 0, -7f);
 
             float armA;
             if (castAnim >= 0f)
@@ -187,7 +217,7 @@ namespace ChinaFishing
             }
             else if (fishingPose) armA = -62f + Mathf.Sin(Time.time * 2f) * 1.5f + Mathf.Sin(Time.time * 40f) * fightShake * 4f;
             else armA = -35f + swing * 0.8f;
-            m.armR.localRotation = Quaternion.Euler(armA, 0, -4f);
+            m.armR.localRotation = Quaternion.Euler(armA, 0, 5f);
             m.rod.gameObject.SetActive(true);
         }
     }
