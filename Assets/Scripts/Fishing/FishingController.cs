@@ -89,7 +89,14 @@ namespace ChinaFishing
         float HookMax { get { return Hook.power < 0.9f ? 3f : Hook.power < 1.1f ? 15f : 9999f; } }
 
         void Msg(string s) { if (OnMessage != null) OnMessage(s); }
-        void SetState(FState s) { state = s; if (OnStateChanged != null) OnStateChanged(); }
+        void SetState(FState s)
+        {
+            state = s;
+            // Пока снасть лежит в воде (ожидание и поклёвка) можно ходить; при замахе, забросе и вываживании персонаж стоит
+            if (player != null && s != FState.Нет)
+                player.frozen = s == FState.Готов || s == FState.Замах || s == FState.Заброс || s == FState.Вываживание || s == FState.Итог;
+            if (OnStateChanged != null) OnStateChanged();
+        }
 
         public bool CanFishHere()
         {
@@ -472,6 +479,13 @@ namespace ChinaFishing
             if (state == FState.Нет || player == null || cam == null) return;
             if (state == FState.Замах) power = Mathf.PingPong(Time.time * 0.9f, 1f);
             if (state == FState.Готов || state == FState.Замах) player.FaceYaw(cam.yaw);
+            if ((state == FState.Ожидание || state == FState.Поклёвка) && bobber != null &&
+                Vector3.Distance(player.transform.position, bobberPos) > 45f)
+            {
+                Msg("Вы ушли слишком далеко от снасти — леска смотана.");
+                StopFishing();
+                return;
+            }
             if (state == FState.Ожидание) UpdateWaiting();
             else if (state == FState.Поклёвка) UpdateBite();
             else if (state == FState.Вываживание) UpdateFight();

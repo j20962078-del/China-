@@ -110,7 +110,7 @@ namespace ChinaFishing
         public float castAnim = -1f;  // 0..1 во время заброса, -1 если нет
         public float fightShake;
         Vector3 faceDir = Vector3.forward;
-        float footTimer;
+        float footTimer, lastYaw;
 
         public const float WalkSpeed = 3.6f;
 
@@ -187,6 +187,15 @@ namespace ChinaFishing
             if (p.y < gy - 0.8f && gy > -1.5f) { Teleport(new Vector3(p.x, gy + 0.6f, p.z), transform.eulerAngles.y); } // провалился под землю
             else if (p.y < -4f) Teleport(WorldBuilder.I.spawn, 0f);                                                          // упал в воду/пустоту
 
+            // Тело поворачивается туда же, куда камера: в первом лице всегда, в третьем — когда крутим камеру стоя
+            if (!frozen && cam != null)
+            {
+                var camFwd = Quaternion.Euler(0, yaw, 0) * Vector3.forward;
+                if (cam.firstPerson) faceDir = Vector3.Slerp(faceDir, camFwd, 1f - Mathf.Exp(-18f * Time.deltaTime));
+                else if (mag <= 0.05f && Mathf.Abs(Mathf.DeltaAngle(yaw, lastYaw)) > 0.15f)
+                    faceDir = Vector3.Slerp(faceDir, camFwd, 1f - Mathf.Exp(-10f * Time.deltaTime));
+            }
+            lastYaw = yaw;
             if (faceDir.sqrMagnitude > 0.001f) transform.rotation = Quaternion.LookRotation(faceDir, Vector3.up);
 
             Animate(mag);
@@ -215,7 +224,7 @@ namespace ChinaFishing
                 float t = castAnim;
                 armA = t < 0.4f ? Mathf.Lerp(-70f, -150f, t / 0.4f) : Mathf.Lerp(-150f, -45f, (t - 0.4f) / 0.6f);
             }
-            else if (fishingPose) armA = -62f + Mathf.Sin(Time.time * 2f) * 1.5f + Mathf.Sin(Time.time * 40f) * fightShake * 4f;
+            else if (fishingPose && speedSmooth < 0.3f) armA = -62f + Mathf.Sin(Time.time * 2f) * 1.5f + Mathf.Sin(Time.time * 40f) * fightShake * 4f;
             else armA = -35f + swing * 0.8f;
             m.armR.localRotation = Quaternion.Euler(armA, 0, 5f);
             m.rod.gameObject.SetActive(true);
@@ -238,13 +247,17 @@ namespace ChinaFishing
         public void SetFirstPerson(bool on)
         {
             firstPerson = on;
+            if (cam != null) cam.nearClipPlane = on ? 0.05f : 0.3f;
             if (target == null) return;
+            var pc = target.GetComponent<PlayerController>();
+            Transform head = pc != null && pc.model != null ? pc.model.head : null;
+            // тело, руки, ноги и удочка остаются видимыми, прячем только голову (шляпа, волосы, лицо)
             foreach (var r in target.GetComponentsInChildren<Renderer>(true))
             {
                 if (r is LineRenderer) continue;
-                bool rod = false;
-                for (var t = r.transform; t != null && t != target; t = t.parent) if (t.name == "Удочка") { rod = true; break; }
-                r.enabled = !on || rod;
+                bool inHead = false;
+                for (var t = r.transform; t != null && t != target; t = t.parent) if (t == head) { inHead = true; break; }
+                r.enabled = !(on && inHead);
             }
         }
 
@@ -274,7 +287,7 @@ namespace ChinaFishing
             if (firstPerson)
             {
                 Inp.Zoom = 0;
-                var eye = target.position + Vector3.up * 1.62f + Quaternion.Euler(0, yaw, 0) * Vector3.forward * 0.14f;
+                var eye = target.position + Vector3.up * 1.74f + Quaternion.Euler(0, yaw, 0) * Vector3.forward * 0.20f;
                 smoothPivot = eye;
                 transform.SetPositionAndRotation(eye, Quaternion.Euler(pitch, yaw, 0));
                 return;
