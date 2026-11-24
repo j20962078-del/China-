@@ -214,8 +214,8 @@ namespace ChinaFishing
             float swing = Mathf.Sin(walkPhase) * 38f * sp;
             m.legL.localRotation = Quaternion.Euler(swing, 0, 0);
             m.legR.localRotation = Quaternion.Euler(-swing, 0, 0);
-            m.torso.localPosition = new Vector3(0, 1.28f + Mathf.Abs(Mathf.Sin(walkPhase)) * 0.03f * sp + Mathf.Sin(Time.time * 1.6f) * 0.004f, 0);
-            m.torso.localRotation = Quaternion.Euler(0, Mathf.Sin(walkPhase) * 4f * sp, 0);
+            m.torso.localPosition = new Vector3(0, 1.28f + Mathf.Abs(Mathf.Sin(walkPhase)) * 0.018f * sp + Mathf.Sin(Time.time * 1.6f) * 0.004f, 0);
+            m.torso.localRotation = Quaternion.Euler(0, Mathf.Sin(walkPhase) * 2f * sp, 0);
             m.armL.localRotation = Quaternion.Euler(-swing * 0.8f, 0, -7f);
 
             float armA;
@@ -225,7 +225,7 @@ namespace ChinaFishing
                 armA = t < 0.4f ? Mathf.Lerp(-70f, -150f, t / 0.4f) : Mathf.Lerp(-150f, -45f, (t - 0.4f) / 0.6f);
             }
             else if (fishingPose && speedSmooth < 0.3f) armA = -62f + Mathf.Sin(Time.time * 2f) * 1.5f + Mathf.Sin(Time.time * 40f) * fightShake * 4f;
-            else armA = -35f + swing * 0.8f;
+            else armA = -42f + swing * 0.12f;      // удочку несём ровно: рука почти не качается
             m.armR.localRotation = Quaternion.Euler(armA, 0, 5f);
             m.rod.gameObject.SetActive(true);
         }

@@ -92,9 +92,10 @@ namespace ChinaFishing
         void SetState(FState s)
         {
             state = s;
-            // Пока снасть лежит в воде (ожидание и поклёвка) можно ходить; при замахе, забросе и вываживании персонаж стоит
+            // Ходить можно всегда, кроме выбора направления, замаха и самого заброса. Во время вываживания
+            // отклонение джойстика влево/вправо по-прежнему считается противодействием рыбе.
             if (player != null && s != FState.Нет)
-                player.frozen = s == FState.Готов || s == FState.Замах || s == FState.Заброс || s == FState.Вываживание || s == FState.Итог;
+                player.frozen = s == FState.Готов || s == FState.Замах || s == FState.Заброс;
             if (OnStateChanged != null) OnStateChanged();
         }
 
