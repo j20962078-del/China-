@@ -71,6 +71,7 @@ namespace ChinaFishing
             Physics.SyncTransforms();
             Vector3 start = world.spawn;
             var s = Game.S;
+            if (s.map != world.MapId) { s.hasPos = false; s.map = world.MapId; }   // позиция со старой карты не подходит
             Vector3 saved;
             if (s.hasPos && SafePosition(new Vector3(s.posX, s.posY, s.posZ), out saved)) start = saved;
             player.Teleport(start, 0f);
@@ -90,10 +91,10 @@ namespace ChinaFishing
         bool SafePosition(Vector3 p, out Vector3 res)
         {
             res = p;
-            if (Mathf.Abs(p.x) > 140f || Mathf.Abs(p.z) > 140f) return false;
+            if (!WorldBuilder.Inside(p.x, p.z, 2f)) return false;
             RaycastHit hit;
             if (!Physics.Raycast(new Vector3(p.x, p.y + 2f, p.z), Vector3.down, out hit, 10f)) return false;
-            if (hit.collider is TerrainCollider && WorldBuilder.H(p.x, p.z) < -0.7f) return false;
+            if (WorldBuilder.IsGround(hit.collider) && WorldBuilder.H(p.x, p.z) < -0.7f) return false;
             res = hit.point + Vector3.up * 0.15f;
             if (Physics.CheckCapsule(res + Vector3.up * 0.4f, res + Vector3.up * 1.4f, 0.3f)) return false;
             return true;
@@ -138,11 +139,11 @@ namespace ChinaFishing
             {
                 menuAngle += Time.deltaTime * 3.5f;
                 float a = menuAngle * Mathf.Deg2Rad;
-                var c = new Vector3(0, 0, 45f);
-                var p = c + new Vector3(Mathf.Sin(a) * 92f, 0, Mathf.Cos(a) * 62f);
-                p.y = Mathf.Max(11f, world.Ground(p.x, p.z) + 7f);
+                var c = world.menuCenter;
+                var p = c + new Vector3(Mathf.Sin(a) * world.menuRadius.x, 0, Mathf.Cos(a) * world.menuRadius.y);
+                p.y = Mathf.Max(world.menuMinY, world.Ground(p.x, p.z) + world.menuHeight);
                 cam.transform.position = p;
-                cam.transform.rotation = Quaternion.LookRotation(new Vector3(0, -1.5f, 40f) - p, Vector3.up);
+                cam.transform.rotation = Quaternion.LookRotation(world.menuLook - p, Vector3.up);
             }
             saveTimer += Time.unscaledDeltaTime;
             if (saveTimer > 20f && !InMenu) { saveTimer = 0; SavePosition(); }

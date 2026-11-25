@@ -761,18 +761,22 @@ namespace ChinaFishing
         void BuildMap()
         {
             RectTransform c; mapR = MakePanel("Карта", out c);
-            var holder = UIKit.R("Карта-рамка", c); UIKit.At(holder, new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(700, 700));
+            mapW = 700f * GameManager.I.world.MapAspect;
+            var holder = UIKit.R("Карта-рамка", c); UIKit.At(holder, new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(mapW, 700));
             mapImgR = holder;
             var raw = holder.gameObject.AddComponent<RawImage>(); mapImage = raw; raw.raycastTarget = false;
             var p = UIKit.Img(holder, UIKit.Accent); p.rectTransform.sizeDelta = new Vector2(26, 26);
             p.rectTransform.anchorMin = p.rectTransform.anchorMax = Vector2.zero; mapPlayer = p.rectTransform;
-            mapSpots = UIKit.R("Места", c); mapSpots.anchorMin = new Vector2(0, 0); mapSpots.anchorMax = new Vector2(1, 1); mapSpots.offsetMin = new Vector2(740, 0); mapSpots.offsetMax = Vector2.zero;
+            mapSpots = UIKit.R("Места", c); mapSpots.anchorMin = new Vector2(0, 0); mapSpots.anchorMax = new Vector2(1, 1); mapSpots.offsetMin = new Vector2(mapW + 40f, 0); mapSpots.offsetMax = Vector2.zero;
             var v = mapSpots.gameObject.AddComponent<VerticalLayoutGroup>(); v.spacing = 14; v.childForceExpandHeight = false; v.childControlHeight = true; v.childControlWidth = true; v.childForceExpandWidth = true;
         }
 
+        float mapW = 700f;
+
         Vector2 MapPos(Vector3 w)
         {
-            return new Vector2((w.x / WorldBuilder.Size + 0.5f) * 700f, (w.z / WorldBuilder.Size + 0.5f) * 700f);
+            var uv = GameManager.I.world.MapUv(w);
+            return new Vector2(uv.x * mapW, uv.y * 700f);
         }
 
         void RebuildMap()
@@ -803,7 +807,7 @@ namespace ChinaFishing
                 b.gameObject.AddComponent<LayoutElement>().preferredHeight = 90;
                 n++;
             }
-            var note = UIKit.Txt(mapSpots, "Жёлтая точка — вы. Синие — места для рыбалки, зелёная — деревня. Красные пятна — дома деревни, тёмно-синий цвет — глубокая вода.", 28, UIKit.Dim, TextAnchor.UpperLeft);
+            var note = UIKit.Txt(mapSpots, "Жёлтая точка — вы. Синие точки — места у воды, зелёные — прочие места. На карте — план реки Амур из архива.", 28, UIKit.Dim, TextAnchor.UpperLeft);
             note.gameObject.AddComponent<LayoutElement>().preferredHeight = 120;
         }
 

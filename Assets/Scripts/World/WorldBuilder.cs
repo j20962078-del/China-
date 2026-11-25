@@ -16,7 +16,36 @@ namespace ChinaFishing
     public class WorldBuilder : MonoBehaviour
     {
         public const float Size = 320f, MinY = -14f, HeightRange = 24f;
-        public const float WaterLevel = 0f;
+        public static float WaterLevel { get { return AmurMap.Data != null ? AmurMap.WaterY : 0f; } }
+        public AmurMap amur;                      // не null — мир построен по карте Амура
+        public string MapId { get { return amur != null ? AmurMap.Id : "lake"; } }
+        public bool HasGround { get { return terrain != null || amur != null; } }
+        // Камера главного меню облетает это место
+        public Vector3 menuCenter = new Vector3(0, 0, 45f), menuLook = new Vector3(0, -1.5f, 40f);
+        public Vector2 menuRadius = new Vector2(92f, 62f);
+        public float menuMinY = 11f, menuHeight = 7f;
+
+        // Границы игрового мира
+        public static bool Inside(float x, float z, float margin = 0f)
+        {
+            if (AmurMap.Data != null) return AmurMap.Inside(x, z, 3f + margin);
+            return Mathf.Abs(x) < 145f - margin && Mathf.Abs(z) < 145f - margin;
+        }
+
+        // Границы по осям: x = минимум X, y = максимум X, z = минимум Z, w = максимум Z
+        public static Vector4 Limits
+        {
+            get
+            {
+                if (AmurMap.Data != null) { float x = AmurMap.HalfW - 3.01f, z = AmurMap.HalfH - 3.01f; return new Vector4(-x, x, -z, z); }
+                return new Vector4(-145f, 145f, -145f, 145f);
+            }
+        }
+
+        public static bool IsGround(Collider c)
+        {
+            return c is TerrainCollider || (c != null && c.GetComponent<GroundMarker>() != null);
+        }
         public static WorldBuilder I;
         void OnDestroy() { if (I == this) I = null; }
         public Terrain terrain;
@@ -38,6 +67,7 @@ namespace ChinaFishing
 
         public static float H(float x, float z)
         {
+            if (AmurMap.Data != null) return AmurMap.Data.GameDepth(x, z);
             float d = Mathf.Sqrt((x / 95f) * (x / 95f) + ((z - 45f) / 62f) * ((z - 45f) / 62f));
             d += (Mathf.PerlinNoise(x * 0.03f + 100f, z * 0.03f) - 0.5f) * 0.22f;
             float land = Mathf.Lerp(0.55f, 1.7f, Smooth(1.0f, 1.35f, d))
@@ -63,6 +93,7 @@ namespace ChinaFishing
 
         public float Ground(float x, float z)
         {
+            if (amur != null) return amur.Height(x, z);
             return terrain.SampleHeight(new Vector3(x, 0, z)) + terrain.transform.position.y;
         }
 
@@ -97,6 +128,15 @@ namespace ChinaFishing
             Random.InitState(20260921);
             root = new GameObject("Мир").transform;
             var env = new GameObject("Окружение").transform; env.SetParent(root, false);
+
+            amur = AmurMap.Load();
+            AmurMap.Data = amur;
+            if (amur != null)
+            {
+                BuildSky();
+                BuildAmurWorld(env);
+                return;
+            }
 
             ComputePier();
             BuildSky();
@@ -224,7 +264,8 @@ namespace ChinaFishing
             g.name = "Вода";
             g.transform.SetParent(root, false);
             g.transform.position = new Vector3(0, WaterLevel, 0);
-            g.transform.localScale = new Vector3(Size / 10f, 1f, Size / 10f);
+            g.transform.localScale = amur != null ? new Vector3(AmurMap.HalfW * 2f / 10f, 1f, AmurMap.HalfH * 2f / 10f) : new Vector3(Size / 10f, 1f, Size / 10f);
+            Vector2 tile = amur != null ? new Vector2(60f * AmurMap.HalfW * 2f / Size, 60f * AmurMap.HalfH * 2f / Size) : new Vector2(60, 60);
             Object.Destroy(g.GetComponent<Collider>());
             waterNormal = Mats.WaterNormal();
             waterMat = Resources.Load<Material>("Mat_Water");
@@ -245,10 +286,10 @@ namespace ChinaFishing
             Mats.Col(waterMat, "_Color", col); Mats.Col(waterMat, "_BaseColor", col);
             Mats.Flt(waterMat, "_Glossiness", 0.95f); Mats.Flt(waterMat, "_Smoothness", 0.95f);
             Mats.Flt(waterMat, "_Metallic", 0f);
-            if (waterMat.HasProperty("_BumpMap")) { waterMat.SetTexture("_BumpMap", waterNormal); waterMat.SetTextureScale("_BumpMap", new Vector2(60, 60)); }
+            if (waterMat.HasProperty("_BumpMap")) { waterMat.SetTexture("_BumpMap", waterNormal); waterMat.SetTextureScale("_BumpMap", tile); }
             Mats.Flt(waterMat, "_BumpScale", 0.6f);
-            if (waterMat.HasProperty("_MainTex")) waterMat.SetTextureScale("_MainTex", new Vector2(60, 60));
-            if (waterMat.HasProperty("_BaseMap")) waterMat.SetTextureScale("_BaseMap", new Vector2(60, 60));
+            if (waterMat.HasProperty("_MainTex")) waterMat.SetTextureScale("_MainTex", tile);
+            if (waterMat.HasProperty("_BaseMap")) waterMat.SetTextureScale("_BaseMap", tile);
             g.GetComponent<Renderer>().sharedMaterial = waterMat;
             water = g.transform;
             g.AddComponent<WaterAnimator>().Init(waterMat);
@@ -718,9 +759,200 @@ namespace ChinaFishing
             spots.Add(new FishingSpot { name = "Деревня (площадь)", pos = vp, yaw = 0f, fishing = false });
         }
 
+        // ---------------- КАРТА АМУРА ----------------
+        static Color MapColor(string m)
+        {
+            switch (m)
+            {
+                case "forest": return new Color(0.16f, 0.24f, 0.12f);
+                case "trunk": return new Color(0.28f, 0.17f, 0.08f);
+                case "house": return new Color(0.38f, 0.28f, 0.19f);
+                case "roof": return new Color(0.24f, 0.12f, 0.09f);
+                case "road": return new Color(0.38f, 0.32f, 0.23f);
+                case "dock": return new Color(0.36f, 0.26f, 0.15f);
+                case "reed": return new Color(0.30f, 0.38f, 0.18f);
+                case "rock": return new Color(0.34f, 0.33f, 0.29f);
+                default: return new Color(0.4f, 0.4f, 0.4f);
+            }
+        }
+
+        void BuildAmurWorld(Transform env)
+        {
+            var a = amur;
+
+            // рельеф кусками (по ~55×100 клеток): так лучше работает отсечение и тени; сетка и текстура — без потерь
+            var groundMat = new Material(Mats.Lit(Color.white, 0.02f));
+            if (a.plan != null) { groundMat.mainTexture = a.plan; if (groundMat.HasProperty("_BaseMap")) groundMat.SetTexture("_BaseMap", a.plan); }
+            var waterQuadMat = Mats.Lit(new Color(0.25f, 0.42f, 0.56f), 0.3f);
+            var terr = new GameObject("Амур-рельеф").transform; terr.SetParent(root, false);
+            const int CQ = 55, RQ = 100;
+            for (int cy = 0; cy * RQ < AmurMap.Rows - 1; cy++)
+                for (int cx = 0; cx * CQ < AmurMap.Cols - 1; cx++)
+                {
+                    int c0 = cx * CQ, c1 = Mathf.Min(c0 + CQ, AmurMap.Cols - 1), r0 = cy * RQ, r1 = Mathf.Min(r0 + RQ, AmurMap.Rows - 1);
+                    bool hasWater, dummy;
+                    var mesh = a.BuildGrid(AmurMap.Range(c0, c1, 1), AmurMap.Range(r0, r1, 1), true, out hasWater);
+                    mesh.name = "Участок_" + cx + "_" + cy;
+                    var go = new GameObject(mesh.name); go.transform.SetParent(terr, false);
+                    go.AddComponent<MeshFilter>().sharedMesh = mesh;
+                    var mr = go.AddComponent<MeshRenderer>();
+                    mr.sharedMaterials = hasWater ? new[] { groundMat, waterQuadMat } : new[] { groundMat };
+                    mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    // коллайдер вдвое реже визуальной сетки: быстро собирается на телефоне, разница по высоте — сантиметры
+                    var col = go.AddComponent<MeshCollider>();
+                    col.sharedMesh = a.BuildGrid(AmurMap.Range(c0, c1, 2), AmurMap.Range(r0, r1, 2), false, out dummy);
+                    go.AddComponent<GroundMarker>();
+                }
+
+            // окрестности за краем карты
+            var sk = new GameObject("Окрестности"); sk.transform.SetParent(root, false);
+            sk.AddComponent<MeshFilter>().sharedMesh = AmurMap.BuildSkirt(700f);
+            var skr = sk.AddComponent<MeshRenderer>();
+            skr.sharedMaterial = Mats.Lit(new Color(0.20f, 0.24f, 0.15f), 0.02f);
+            skr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            BuildWater();
+
+            // деревья, домики, дороги, мостки, лодки — как в модели
+            foreach (var kv in a.parts)
+            {
+                if (kv.Value.Count < 3) continue;
+                var go = new GameObject("Амур-" + kv.Key); go.transform.SetParent(env, false);
+                var mesh = AmurMap.BuildProps(kv.Value); mesh.name = kv.Key;
+                go.AddComponent<MeshFilter>().sharedMesh = mesh;
+                var mr = go.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = Mats.Lit(MapColor(kv.Key), 0.04f);
+                if (kv.Key == "road") mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                if (kv.Key == "house") { go.AddComponent<MeshCollider>().sharedMesh = mesh; }
+            }
+
+            DefineSpotsAmur();
+        }
+
+        class WaterBody { public int area; public double sx, sz; public List<int> cells = new List<int>(); }
+
+        void DefineSpotsAmur()
+        {
+            var a = amur;
+            int W = AmurMap.Cols, Hh = AmurMap.Rows;
+            var wet = new bool[W * Hh];
+            for (int i = 0; i < wet.Length; i++) wet[i] = a.h[i] < AmurMap.WaterY - 0.03f;
+
+            // водоёмы: связные области воды
+            var seen = new bool[W * Hh];
+            var bodies = new List<WaterBody>();
+            var queue = new Queue<int>();
+            for (int s0 = 0; s0 < wet.Length; s0++)
+            {
+                if (!wet[s0] || seen[s0]) continue;
+                var body = new WaterBody();
+                seen[s0] = true; queue.Enqueue(s0);
+                while (queue.Count > 0)
+                {
+                    int c = queue.Dequeue();
+                    int ci = c % W, cj = c / W;
+                    body.cells.Add(c); body.area++; body.sx += AmurMap.CX(ci); body.sz += AmurMap.CZ(cj);
+                    if (ci > 0 && wet[c - 1] && !seen[c - 1]) { seen[c - 1] = true; queue.Enqueue(c - 1); }
+                    if (ci < W - 1 && wet[c + 1] && !seen[c + 1]) { seen[c + 1] = true; queue.Enqueue(c + 1); }
+                    if (cj > 0 && wet[c - W] && !seen[c - W]) { seen[c - W] = true; queue.Enqueue(c - W); }
+                    if (cj < Hh - 1 && wet[c + W] && !seen[c + W]) { seen[c + W] = true; queue.Enqueue(c + W); }
+                }
+                if (body.area >= 20) bodies.Add(body);
+            }
+            bodies.Sort((x, y) => y.area.CompareTo(x.area));
+
+            int[] regionCount = new int[3];
+            int made = 0;
+            for (int bi = 0; bi < bodies.Count && made < 8; bi++)
+            {
+                var body = bodies[bi];
+                float cx = (float)(body.sx / body.area), cz = (float)(body.sz / body.area);
+                // берег: сухие клетки рядом с водой, не у самого края карты
+                var shore = new HashSet<int>();
+                int[] dx = { 2, -2, 0, 0, 2, -2, 2, -2 }, dj = { 0, 0, 2, -2, 2, 2, -2, -2 };
+                foreach (int c in body.cells)
+                {
+                    int ci = c % W, cj = c / W;
+                    for (int k = 0; k < 8; k++)
+                    {
+                        int ni = ci + dx[k], nj = cj + dj[k];
+                        if (ni < 3 || nj < 3 || ni >= W - 3 || nj >= Hh - 3) continue;
+                        int nc = nj * W + ni;
+                        if (!wet[nc] && a.h[nc] > AmurMap.WaterY + 0.12f) shore.Add(nc);
+                    }
+                }
+                if (shore.Count == 0) continue;
+
+                int best = -1; float bd = 1e9f;
+                foreach (int c in shore)
+                {
+                    float d = (new Vector2(AmurMap.CX(c % W) - cx, AmurMap.CZ(c / W) - cz)).sqrMagnitude;
+                    if (d < bd) { bd = d; best = c; }
+                }
+                int want = bi < 3 ? 2 : 1;
+                var chosen = new List<int> { best };
+                if (want > 1)
+                {
+                    int far = -1; float fd = -1f;
+                    foreach (int c in shore)
+                    {
+                        float d = (new Vector2(AmurMap.CX(c % W) - AmurMap.CX(best % W), AmurMap.CZ(c / W) - AmurMap.CZ(best / W))).sqrMagnitude;
+                        float toCenter = (new Vector2(AmurMap.CX(c % W) - cx, AmurMap.CZ(c / W) - cz)).magnitude;
+                        if (toCenter < 40f && d > fd) { fd = d; far = c; }
+                    }
+                    if (far >= 0 && fd > 15f * 15f) chosen.Add(far);
+                }
+                foreach (int c in chosen)
+                {
+                    float px = AmurMap.CX(c % W), pz = AmurMap.CZ(c / W);
+                    float yaw = Mathf.Atan2(cx - px, cz - pz) * Mathf.Rad2Deg;
+                    int reg = pz > 80f ? 0 : pz < -80f ? 2 : 1;
+                    string[] names = { "Северный плёс", "Центральный плёс", "Южный плёс" };
+                    regionCount[reg]++;
+                    spots.Add(new FishingSpot { name = names[reg] + (regionCount[reg] > 1 ? " " + regionCount[reg] : ""), pos = new Vector3(px, a.Height(px, pz) + 0.05f, pz), yaw = yaw });
+                    made++;
+                }
+            }
+
+            // мостки и домики из модели
+            if (a.hasDocks)
+            {
+                float near = 1e9f;
+                foreach (var body in bodies)
+                    foreach (int c in body.cells)
+                    {
+                        float d = (new Vector2(AmurMap.CX(c % W) - a.dockCenter.x, AmurMap.CZ(c / W) - a.dockCenter.z)).magnitude;
+                        if (d < near) near = d;
+                    }
+                var dp = new Vector3(a.dockCenter.x, a.Height(a.dockCenter.x, a.dockCenter.z) + 0.05f, a.dockCenter.z - 2.5f);
+                dp.y = a.Height(dp.x, dp.z) + 0.05f;
+                spots.Add(new FishingSpot { name = "Мостки", pos = dp, yaw = 0f, fishing = near < 30f });
+            }
+            if (a.hasCabins)
+            {
+                var cp = new Vector3(a.cabinCenter.x, 0f, a.cabinCenter.z - 6f); cp.y = a.Height(cp.x, cp.z) + 0.05f;
+                spots.Add(new FishingSpot { name = "Домики", pos = cp, yaw = 0f, fishing = false });
+            }
+            if (spots.Count == 0)
+            {
+                var mid = new Vector3(0f, a.Height(0f, 0f) + 0.05f, 0f);
+                spots.Add(new FishingSpot { name = "Центр карты", pos = mid, yaw = 0f, fishing = false });
+            }
+
+            spawn = spots[0].pos + Vector3.up * 0.25f;
+            // главное меню облетает самый большой водоём
+            if (bodies.Count > 0)
+            {
+                var b0 = bodies[0];
+                var c = new Vector3((float)(b0.sx / b0.area), AmurMap.WaterY, (float)(b0.sz / b0.area));
+                menuCenter = c; menuLook = c; menuRadius = new Vector2(38f, 28f); menuMinY = AmurMap.WaterY + 5f; menuHeight = 6f;
+            }
+            else { menuCenter = spawn; menuLook = spawn; menuRadius = new Vector2(30f, 30f); menuMinY = spawn.y + 5f; menuHeight = 6f; }
+        }
+
         public void ApplyTerrainQuality()
         {
-            if (terrain == null || Game.S == null) return;
+            if (terrain == null || Game.S == null) return;   // у карты Амура рельеф — обычный меш, настроек качества нет
             int q = Game.S.quality;
             terrain.detailObjectDistance = q == 0 ? 35f : q == 1 ? 60f : 90f;
             terrain.detailObjectDensity = q == 0 ? 0.4f : q == 1 ? 0.7f : 1f;
@@ -729,8 +961,18 @@ namespace ChinaFishing
         }
 
         // ---------------- КАРТА ----------------
+        public float MapAspect { get { return amur != null ? AmurMap.HalfW / AmurMap.HalfH : 1f; } }
+
+        // Точка мира → положение на карте (0…1 по обеим осям)
+        public Vector2 MapUv(Vector3 w)
+        {
+            if (amur != null) return new Vector2((w.x + AmurMap.HalfW) / (2f * AmurMap.HalfW), (w.z + AmurMap.HalfH) / (2f * AmurMap.HalfH));
+            return new Vector2(w.x / Size + 0.5f, w.z / Size + 0.5f);
+        }
+
         public Texture2D MakeMap(int res)
         {
+            if (amur != null && amur.plan != null) return amur.plan;   // план карты из архива Амура
             var tex = new Texture2D(res, res, TextureFormat.RGB24, false);
             for (int y = 0; y < res; y++)
                 for (int x = 0; x < res; x++)
@@ -763,4 +1005,7 @@ namespace ChinaFishing
             if (m.HasProperty("_BaseMap")) m.SetTextureOffset("_BaseMap", off * 0.5f);
         }
     }
+
+    // Метка на кусках рельефа: по ней отличают землю от мостков и домов
+    public class GroundMarker : MonoBehaviour { }
 }

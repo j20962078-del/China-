@@ -179,7 +179,7 @@ namespace ChinaFishing
             player.FaceYaw(cam.yaw);
             target = player.transform.position + fwd * castDistance;
             target.y = WorldBuilder.WaterLevel;
-            bool inside = Mathf.Abs(target.x) < 150f && Mathf.Abs(target.z) < 150f;
+            bool inside = WorldBuilder.Inside(target.x, target.z);
             if (!inside || WorldBuilder.H(target.x, target.z) > -0.35f)
             {
                 Msg("Сюда не достать воды. Бросьте дальше или выберите другое направление.");

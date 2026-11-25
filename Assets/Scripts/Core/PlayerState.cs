@@ -18,6 +18,7 @@ namespace ChinaFishing
         public int xp = 0;
         public float posX = 0, posY = 0, posZ = 0;
         public bool hasPos = false;
+        public string map = "";   // на какой карте сохранена позиция
         public List<InvEntry> inventory = new List<InvEntry>();
         public List<string> owned = new List<string>();     // купленные снасти (не расходники)
         public List<FishRecord> collection = new List<FishRecord>();

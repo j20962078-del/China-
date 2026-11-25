@@ -170,7 +170,7 @@ namespace ChinaFishing
             if (WorldBuilder.H(next.x, next.z) > -0.85f) return false;
             RaycastHit hit;
             if (Physics.Raycast(new Vector3(next.x, transform.position.y + 1.5f, next.z), Vector3.down, out hit, 8f))
-                return hit.collider is TerrainCollider; // мостки или мост — можно, дно — нельзя
+                return WorldBuilder.IsGround(hit.collider); // мостки или мост — можно, дно — нельзя
             return true;
         }
 
@@ -187,7 +187,7 @@ namespace ChinaFishing
         void Update()
         {
             SyncRod();
-            if (WorldBuilder.I == null || WorldBuilder.I.terrain == null) return;
+            if (WorldBuilder.I == null || !WorldBuilder.I.HasGround) return;
             Vector2 mv = (frozen || Inp.UiBlocking) ? Vector2.zero : Inp.Move;
             float yaw = cam != null ? cam.yaw : 0f;
             Vector3 dir = Quaternion.Euler(0, yaw, 0) * new Vector3(mv.x, 0, mv.y);
@@ -219,7 +219,7 @@ namespace ChinaFishing
             cc.Move(move * Time.deltaTime);
 
             var p = transform.position;
-            p.x = Mathf.Clamp(p.x, -145f, 145f); p.z = Mathf.Clamp(p.z, -145f, 145f);
+            if (!WorldBuilder.Inside(p.x, p.z)) { var lim = WorldBuilder.Limits; p.x = Mathf.Clamp(p.x, lim.x, lim.y); p.z = Mathf.Clamp(p.z, lim.z, lim.w); }
             if (p.x != transform.position.x || p.z != transform.position.z) { cc.enabled = false; transform.position = p; cc.enabled = true; }
             float gy = WorldBuilder.I.Ground(p.x, p.z);
             if (p.y < gy - 0.8f && gy > -1.5f) { Teleport(new Vector3(p.x, gy + 0.6f, p.z), transform.eulerAngles.y); } // провалился под землю
@@ -347,7 +347,7 @@ namespace ChinaFishing
             }
             curDist = allowed < curDist ? allowed : Mathf.Lerp(curDist, allowed, 1f - Mathf.Exp(-6f * Time.deltaTime));
             var pos = smoothPivot + back * curDist;
-            if (WorldBuilder.I != null && WorldBuilder.I.terrain != null)
+            if (WorldBuilder.I != null && WorldBuilder.I.HasGround)
             {
                 float g = WorldBuilder.I.Ground(pos.x, pos.z) + 0.35f;
                 if (pos.y < g) pos.y = g;
