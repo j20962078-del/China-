@@ -4,7 +4,7 @@ using UnityEngine;
 namespace ChinaFishing
 {
     public enum Rarity { Обычная, Необычная, Редкая, Легендарная }
-    public enum ItemCategory { Удочки, Катушки, Лески, Крючки, Поплавки, Грузила, Оснастки, Наживки, Приманки, Прикормки, Материалы, Прочее }
+    public enum ItemCategory { Удочки, Фидерные, Карповые, Пикерные, Спиннинговые, Поплавочные, Маркерные, Катушки, Лески, Крючки, Поплавки, Грузила, Оснастки, Наживки, Приманки, Прикормки, Материалы, Прочее }
 
     public class FishDef
     {
@@ -37,6 +37,8 @@ namespace ChinaFishing
         public string maker;    // производитель; null — без производителя
         public string compat;   // текст совместимости для карточки товара
         public string[] targets; // для прикормки: id рыб, которых она привлекает особенно сильно
+        public string model;    // имя 3D-модели в Resources/Rods (для удилищ); null — модели нет
+        public float length;    // длина удилища, м
         public string family;   // семейство: рыба, любящая id семейства, клюёт и на этот товар (например «worm»)
     }
 
@@ -71,10 +73,10 @@ namespace ChinaFishing
         {
             new SkillDef { index = 0, name = "Фидер", perStep = 5, how = "Каждые 5 пойманных рыб на донную снасть (не бойл) — +0,3%", note = "Бонус к клёву на донной оснастке." },
             new SkillDef { index = 1, name = "Карпфишинг", perStep = 5, how = "Каждые 5 пойманных рыб на донную снасть с бойлом/пеллетсом — +0,3%", note = "Бонус к клёву на карповой снасти." },
-            new SkillDef { index = 2, name = "Пикер", perStep = 5, how = "Каждые 5 пойманных рыб на пикер — +0,3%", note = "Пикерных удилищ в игре пока нет — навык не растёт." },
+            new SkillDef { index = 2, name = "Пикер", perStep = 5, how = "Каждые 5 пойманных рыб на пикер — +0,3%", note = "Пикерные удилища уже в магазине, но рост этого навыка пока не подключён к ловле." },
             new SkillDef { index = 3, name = "Спиннинг", perStep = 5, how = "Каждые 5 пойманных рыб на спиннинг — +0,3%", note = "Бонус к клёву при ловле на приманки." },
             new SkillDef { index = 4, name = "Поплавочная ловля", perStep = 5, how = "Каждые 5 пойманных рыб на поплавочную снасть — +0,3%", note = "Бонус к клёву на поплавочной оснастке." },
-            new SkillDef { index = 5, name = "Маркер", perStep = 5, how = "Развивается за исследование дна и глубины", note = "Маркерного удилища в игре пока нет — навык не растёт." },
+            new SkillDef { index = 5, name = "Маркер", perStep = 5, how = "Развивается за исследование дна и глубины", note = "Маркерные удилища уже в магазине, но рост этого навыка пока не подключён к ловле." },
             new SkillDef { index = -1, name = "Приготовление прикормки", perStep = 6, how = "Каждые 6 успешных замесов — +0,3%", note = "Усиливает действие прикормки." },
         };
         static readonly Dictionary<string, FishDef> fishMap = new Dictionary<string, FishDef>();
@@ -117,6 +119,26 @@ namespace ChinaFishing
         static void M(string id, string name, string sub, int price, Color col, string desc)
         {
             I(id, name, ItemCategory.Материалы, price, 0f, 0f, "Ингредиент · используется в крафте", desc, col, true, 10, 1, sub);
+        }
+
+
+        // Удилище с 3D-моделью. Имя файла в Resources/Rods без расширения; id = «rod_» + имя без номера.
+        static void Rod(string file, ItemCategory cat, string maker, string name, float len, float loadKg, float castM, int price, int lvl)
+        {
+            string kind = cat == ItemCategory.Фидерные ? "Фидерное" : cat == ItemCategory.Карповые ? "Карповое" : cat == ItemCategory.Пикерные ? "Пикерное"
+                : cat == ItemCategory.Спиннинговые ? "Спиннинговое" : cat == ItemCategory.Поплавочные ? "Поплавочное" : "Маркерное";
+            string note = cat == ItemCategory.Фидерные ? "Донная ловля с кормушкой."
+                : cat == ItemCategory.Карповые ? "Дальний заброс и вываживание крупной рыбы."
+                : cat == ItemCategory.Пикерные ? "Лёгкая снасть для ловли на коротких дистанциях."
+                : cat == ItemCategory.Спиннинговые ? "Для проводки приманок."
+                : cat == ItemCategory.Поплавочные ? "Длинное удилище для поплавочной ловли."
+                : "Для исследования дна и глубины.";
+            string lenText = len.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',');
+            string id = "rod_" + file.Substring(file.IndexOf('_') + 1).ToLowerInvariant();
+            I(id, maker + " " + name, cat, price, loadKg, castM, "Нагрузка до " + loadKg.ToString("0") + " кг, заброс " + castM.ToString("0") + " м, длина " + lenText + " м",
+                kind + " удилище без катушки, длина " + lenText + " м. " + note, C(40, 45, 55), false, 1, lvl, cat.ToString() + " удилища", maker);
+            var it = Items[Items.Count - 1];
+            it.model = file; it.length = len;
         }
 
         // Рецепт: выход, количество, уровень, затем пары «id материала, сколько»
@@ -188,10 +210,50 @@ namespace ChinaFishing
                 new[] { "corn", "dough", "boilie", "worm" }, 85, 45, C(170, 130, 60), C(235, 215, 150), new Vector3(0.95f, 0.35f, 0.17f), 8);
 
             // ---------- УДОЧКИ ----------
-            I("rod_start", "Бамбуковая удочка", ItemCategory.Удочки, 0, 5f, 8f, "Нагрузка до 5 кг, заброс 8 м", "Простая удочка для начинающих.", C(160, 130, 70));
-            I("rod_fiber", "Стеклопластиковая удочка", ItemCategory.Удочки, 600, 12f, 14f, "Нагрузка до 12 кг, заброс 14 м", "Лёгкая и прочная.", C(60, 120, 160), false, 1, 2);
-            I("rod_carbon", "Карбоновый спиннинг", ItemCategory.Удочки, 2200, 25f, 22f, "Нагрузка до 25 кг, заброс 22 м", "Чувствительный бланк, дальний заброс.", C(30, 30, 35), false, 1, 5);
-            I("rod_pro", "Карповое удилище Про", ItemCategory.Удочки, 7500, 60f, 30f, "Нагрузка до 60 кг, заброс 30 м", "Для самой крупной рыбы озера.", C(120, 30, 30), false, 1, 9);
+            I("rod_start", "Бамбуковая удочка", ItemCategory.Удочки, 0, 5f, 8f, "Нагрузка до 5 кг, заброс 8 м", "Простая удочка для начинающих.", C(160, 130, 70), sub: "Базовые удилища");
+            I("rod_fiber", "Стеклопластиковая удочка", ItemCategory.Удочки, 600, 12f, 14f, "Нагрузка до 12 кг, заброс 14 м", "Лёгкая и прочная.", C(60, 120, 160), false, 1, 2, "Базовые удилища");
+            I("rod_carbon", "Карбоновый спиннинг", ItemCategory.Удочки, 2200, 25f, 22f, "Нагрузка до 25 кг, заброс 22 м", "Чувствительный бланк, дальний заброс.", C(30, 30, 35), false, 1, 5, "Базовые удилища");
+            I("rod_pro", "Карповое удилище Про", ItemCategory.Удочки, 7500, 60f, 30f, "Нагрузка до 60 кг, заброс 30 м", "Для самой крупной рыбы озера.", C(120, 30, 30), false, 1, 9, "Базовые удилища");
+
+
+            // ---------- УДИЛИЩА С 3D-МОДЕЛЯМИ (Resources/Rods) ----------
+            // Столбцы: файл модели, категория, производитель, название, длина м, нагрузка кг, заброс м, цена, уровень.
+            // Цифры — игровой баланс, подправьте под себя: на модель они не влияют.
+            Rod("01_feeder_Mikado_Intro_II_Medium_Feeder", ItemCategory.Фидерные, "Mikado", "Intro II Medium Feeder", 3.6f, 20f, 20f, 1200, 2);
+            Rod("02_feeder_Daiwa_Black_Widow_Feeder", ItemCategory.Фидерные, "Daiwa", "Black Widow Feeder", 3.6f, 22f, 22f, 1800, 3);
+            Rod("03_feeder_Flagman_Sherman_Pro_Feeder", ItemCategory.Фидерные, "Flagman", "Sherman Pro Feeder", 3.9f, 26f, 25f, 2600, 4);
+            Rod("04_feeder_Shimano_Aero_X3_Distance_Feeder", ItemCategory.Фидерные, "Shimano", "Aero X3 Distance Feeder", 3.9f, 30f, 30f, 3600, 5);
+            Rod("05_feeder_Preston_Supera_X_Feeder", ItemCategory.Фидерные, "Preston", "Supera X Feeder", 3.6f, 32f, 28f, 4800, 6);
+
+            Rod("06_carp_Daiwa_Black_Widow_Carp", ItemCategory.Карповые, "Daiwa", "Black Widow Carp", 3.6f, 35f, 24f, 2500, 4);
+            Rod("07_carp_Shimano_Tribal_TX_1", ItemCategory.Карповые, "Shimano", "Tribal TX 1", 3.6f, 40f, 26f, 3500, 5);
+            Rod("08_carp_Fox_EOS_Carp", ItemCategory.Карповые, "Fox", "EOS Carp", 3.6f, 45f, 28f, 5000, 6);
+            Rod("09_carp_Nash_Scope", ItemCategory.Карповые, "Nash", "Scope", 3.6f, 50f, 30f, 6500, 7);
+            Rod("10_carp_Sonik_VaderX", ItemCategory.Карповые, "Sonik", "VaderX", 3.6f, 55f, 32f, 8500, 8);
+
+            Rod("11_picker_Mikado_Intro_II_Picker_270", ItemCategory.Пикерные, "Mikado", "Intro II Picker 270", 2.7f, 8f, 12f, 700, 1);
+            Rod("12_picker_Mikado_Intro_II_Picker_300", ItemCategory.Пикерные, "Mikado", "Intro II Picker 300", 3.0f, 10f, 14f, 1000, 2);
+            Rod("13_picker_Flagman_S_Power_Picker_270", ItemCategory.Пикерные, "Flagman", "S Power Picker 270", 2.7f, 12f, 14f, 1100, 2);
+            Rod("14_picker_Daiwa_Black_Widow_Picker_240", ItemCategory.Пикерные, "Daiwa", "Black Widow Picker 240", 2.4f, 14f, 16f, 1500, 3);
+            Rod("15_picker_Favorite_Syntec_Picker_SYP_3040", ItemCategory.Пикерные, "Favorite", "Syntec Picker SYP 3040", 3.0f, 16f, 18f, 2000, 4);
+
+            Rod("16_spinning_Daiwa_Ninja_X_Spin", ItemCategory.Спиннинговые, "Daiwa", "Ninja X Spin", 2.4f, 12f, 20f, 1000, 2);
+            Rod("17_spinning_Shimano_Catana_EX_Spinning", ItemCategory.Спиннинговые, "Shimano", "Catana EX Spinning", 2.4f, 15f, 22f, 1600, 3);
+            Rod("18_spinning_Favorite_X1", ItemCategory.Спиннинговые, "Favorite", "X1", 2.4f, 18f, 24f, 2200, 4);
+            Rod("19_spinning_Major_Craft_Firstcast", ItemCategory.Спиннинговые, "Major Craft", "Firstcast", 2.1f, 20f, 26f, 3000, 5);
+            Rod("20_spinning_Norstream_Rebel", ItemCategory.Спиннинговые, "Norstream", "Rebel", 2.7f, 22f, 30f, 4000, 6);
+
+            Rod("21_float_Shimano_Catana_EX_Float", ItemCategory.Поплавочные, "Shimano", "Catana EX Float", 4.0f, 8f, 14f, 800, 1);
+            Rod("22_float_Daiwa_Ninja_Float", ItemCategory.Поплавочные, "Daiwa", "Ninja Float", 4.0f, 10f, 16f, 1200, 2);
+            Rod("23_float_Flagman_Squadron_Pro_Match", ItemCategory.Поплавочные, "Flagman", "Squadron Pro Match", 4.2f, 12f, 18f, 1800, 3);
+            Rod("24_float_Mikado_Ultraviolet_Match", ItemCategory.Поплавочные, "Mikado", "Ultraviolet Match", 4.0f, 13f, 20f, 2500, 4);
+            Rod("25_float_Maver_Reality", ItemCategory.Поплавочные, "Maver", "Reality", 4.2f, 14f, 22f, 3400, 5);
+
+            Rod("26_marker_Fox_Horizon_X3_Marker", ItemCategory.Маркерные, "Fox", "Horizon X3 Marker", 3.6f, 30f, 26f, 3000, 5);
+            Rod("27_marker_Daiwa_Black_Widow_Marker", ItemCategory.Маркерные, "Daiwa", "Black Widow Marker", 3.6f, 34f, 28f, 4200, 6);
+            Rod("28_marker_Shimano_Tribal_TX_Marker", ItemCategory.Маркерные, "Shimano", "Tribal TX Marker", 3.6f, 38f, 30f, 5500, 7);
+            Rod("29_marker_Nash_Scope_Marker", ItemCategory.Маркерные, "Nash", "Scope Marker", 3.6f, 42f, 31f, 7000, 8);
+            Rod("30_marker_ESP_Tectonic_Marker", ItemCategory.Маркерные, "ESP", "Tectonic Marker", 3.6f, 48f, 32f, 9000, 9);
 
             // ---------- КАТУШКИ ----------
             I("reel_basic", "Катушка «Ручеёк»", ItemCategory.Катушки, 0, 1.0f, 0.4f, "Скорость 1,0 · тормоз 0,4", "Простая безынерционная катушка.", C(150, 150, 150));
@@ -371,6 +433,13 @@ namespace ChinaFishing
         // он сам появится в нужной секции, интерфейс менять не нужно.
         static readonly Dictionary<ItemCategory, SectionDef[]> sections = new Dictionary<ItemCategory, SectionDef[]>
         {
+            { ItemCategory.Удочки, Secs(null, "Базовые удилища") },
+            { ItemCategory.Фидерные, Secs(null, "Фидерные удилища") },
+            { ItemCategory.Карповые, Secs(null, "Карповые удилища") },
+            { ItemCategory.Пикерные, Secs(null, "Пикерные удилища") },
+            { ItemCategory.Спиннинговые, Secs(null, "Спиннинговые удилища") },
+            { ItemCategory.Поплавочные, Secs(null, "Поплавочные удилища") },
+            { ItemCategory.Маркерные, Secs(null, "Маркерные удилища") },
             { ItemCategory.Наживки, Secs(null, "Живцы", "Черви", "Личинки", "Жуки", "Тесто", "Натуральные насадки", "Тонущий бойл",
                 "Всплывающий бойл (Pop-Up)", "Нейтральной плавучести (Wafters)", "Искусственная кукуруза", "Пеллеты", "Искусственные насадки", "Другие насадки") },
             { ItemCategory.Приманки, Secs(null, "Воблеры", "Минноу", "Крэнки", "Шэды", "Джеркбейты", "Попперы", "Волкеры", "Колеблющиеся блёсны",
@@ -398,6 +467,12 @@ namespace ChinaFishing
             var l = new List<SectionDef>();
             foreach (var p in parts) l.AddRange(p);
             return l.ToArray();
+        }
+
+        public static bool IsRod(ItemCategory c)
+        {
+            return c == ItemCategory.Удочки || c == ItemCategory.Фидерные || c == ItemCategory.Карповые || c == ItemCategory.Пикерные ||
+                   c == ItemCategory.Спиннинговые || c == ItemCategory.Поплавочные || c == ItemCategory.Маркерные;
         }
 
         // Категории, предметы которых можно надеть / выбрать для рыбалки

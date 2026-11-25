@@ -128,10 +128,14 @@ namespace ChinaFishing
         static readonly Dictionary<string, Texture2D> cache = new Dictionary<string, Texture2D>();
         const int S = 64;
 
+        // Удилище с 3D-моделью: картинка широкая (RodPreview.Aspect), а не квадратная иконка
+        public static bool IsWide(ItemDef d) { return d != null && GameData.IsRod(d.cat) && RodModels.Has(d); }
+
         public static Texture2D Get(ItemDef d)
         {
             Texture2D t;
-            if (cache.TryGetValue(d.id, out t)) return t;
+            if (cache.TryGetValue(d.id, out t) && t != null) return t;
+            if (IsWide(d)) { t = RodPreview.Get(d); if (t != null) { cache[d.id] = t; return t; } }
             var px = new Color[S * S];
             for (int i = 0; i < px.Length; i++) px[i] = new Color(0, 0, 0, 0);
             Draw(px, d);

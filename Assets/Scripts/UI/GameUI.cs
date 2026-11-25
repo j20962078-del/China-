@@ -358,13 +358,17 @@ namespace ChinaFishing
             }
         }
 
+        // Колонка вкладок слева. Вкладок много (с удилищами по типам), поэтому колонка прокручивается
         RectTransform TabHolder(RectTransform content)
         {
-            var t = UIKit.R("Вкладки", content);
+            var sr = UIKit.Scroll(content, false, Vector2.zero, 1);
+            var t = sr.GetComponent<RectTransform>();
+            t.name = "Вкладки";
             t.anchorMin = new Vector2(0, 0); t.anchorMax = new Vector2(0, 1); t.pivot = new Vector2(0, 1);
             t.offsetMin = new Vector2(0, 0); t.offsetMax = new Vector2(320, 0);
-            var v = t.gameObject.AddComponent<VerticalLayoutGroup>(); v.spacing = 8; v.childForceExpandWidth = true; v.childForceExpandHeight = false; v.childControlHeight = true; v.childControlWidth = true;
-            return t;
+            var v = sr.content.GetComponent<VerticalLayoutGroup>();
+            if (v != null) { v.spacing = 8; v.padding = new RectOffset(0, 0, 0, 12); }
+            return sr.content;
         }
 
         // ---------------- МАГАЗИН ----------------
@@ -452,7 +456,11 @@ namespace ChinaFishing
             cb.onClick.AddListener(() => OpenShopDialog(d_));
             float w = cellW - 24f;
 
-            var icon = UIKit.R("Иконка", card.transform); UIKit.At(icon, new Vector2(0.5f, 1), new Vector2(0, -14), new Vector2(150, 150));
+            bool wide = IconFactory.IsWide(d);
+            var icon = UIKit.R("Иконка", card.transform);
+            if (wide) { float iw = Mathf.Min(w, 340f); UIKit.At(icon, new Vector2(0.5f, 1), new Vector2(0, -14), new Vector2(iw, iw / RodPreview.Aspect)); }
+            else UIKit.At(icon, new Vector2(0.5f, 1), new Vector2(0, -14), new Vector2(150, 150));
+            icon.pivot = new Vector2(0.5f, 1);
             var ri = icon.gameObject.AddComponent<RawImage>(); ri.texture = IconFactory.Get(d); ri.raycastTarget = false;
 
             Label(card.transform, d.name, 30, new Vector2(0.5f, 1), new Vector2(0, -170), new Vector2(w, 66), TextAnchor.UpperCenter, Color.white, FontStyle.Bold);
@@ -522,6 +530,8 @@ namespace ChinaFishing
         {
             var d = dlgItem; if (d == null) return;
             dlgIcon.texture = IconFactory.Get(d);
+            var dri = dlgIcon.rectTransform;
+            dri.sizeDelta = IconFactory.IsWide(d) ? new Vector2(280f, 280f / RodPreview.Aspect) : new Vector2(260f, 260f);
             dlgName.text = d.name;
             dlgType.text = GameData.TypeName(d) + (d.consumable && d.packSize > 1 ? "  ·  В упаковке: " + d.packSize + " шт" : "") + (string.IsNullOrEmpty(d.maker) ? "" : "  ·  " + d.maker);
             dlgStats.text = d.statText;
@@ -681,11 +691,13 @@ namespace ChinaFishing
                 var d_ = d;
                 var card = UIKit.Img(invList, UIKit.Panel2);
                 var le = card.gameObject.AddComponent<LayoutElement>(); le.preferredHeight = 170;
-                var icon = UIKit.R("Иконка", card.transform); UIKit.At(icon, new Vector2(0, 0.5f), new Vector2(20, 0), new Vector2(130, 130));
+                bool wide = IconFactory.IsWide(d);
+                float iconW = wide ? 300f : 130f, iconH = wide ? 300f / RodPreview.Aspect : 130f, tx = 20f + iconW + 30f;
+                var icon = UIKit.R("Иконка", card.transform); UIKit.At(icon, new Vector2(0, 0.5f), new Vector2(20, 0), new Vector2(iconW, iconH));
                 var ri = icon.gameObject.AddComponent<RawImage>(); ri.texture = IconFactory.Get(d); ri.raycastTarget = false;
-                Label(card.transform, d.name + (d.consumable ? "   ×" + Game.Count(d.id) : ""), 38, new Vector2(0, 1), new Vector2(180, -14), new Vector2(950, 52), TextAnchor.MiddleLeft, Color.white, FontStyle.Bold);
-                Label(card.transform, d.statText, 30, new Vector2(0, 1), new Vector2(180, -66), new Vector2(950, 44), TextAnchor.MiddleLeft, UIKit.Accent);
-                Label(card.transform, d.desc, 28, new Vector2(0, 0), new Vector2(180, 14), new Vector2(950, 60), TextAnchor.UpperLeft, UIKit.Dim);
+                Label(card.transform, d.name + (d.consumable ? "   ×" + Game.Count(d.id) : ""), 38, new Vector2(0, 1), new Vector2(tx, -14), new Vector2(wide ? 880 : 950, 52), TextAnchor.MiddleLeft, Color.white, FontStyle.Bold);
+                Label(card.transform, d.statText, 30, new Vector2(0, 1), new Vector2(tx, -66), new Vector2(wide ? 880 : 950, 44), TextAnchor.MiddleLeft, UIKit.Accent);
+                Label(card.transform, d.desc, 28, new Vector2(0, 0), new Vector2(tx, 14), new Vector2(wide ? 880 : 950, 60), TextAnchor.UpperLeft, UIKit.Dim);
                 bool equippable = GameData.IsEquippable(d.cat);
                 if (equippable)
                 {

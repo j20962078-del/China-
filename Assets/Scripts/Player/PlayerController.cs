@@ -17,6 +17,35 @@ namespace ChinaFishing
     {
         public Transform root, legL, legR, armL, armR, torso, head, rodTip, rod;
         public GameObject fishHold;
+        Transform rodVisual;
+
+        // Меняет удочку в руке: для удилищ с 3D-моделью — модель (торец рукояти за ладонью, вершинка вперёд), иначе простая базовая
+        public void SetRod(ItemDef d)
+        {
+            if (rodVisual != null) Object.Destroy(rodVisual.gameObject);
+            rodVisual = new GameObject("Вид удочки").transform;
+            rodVisual.SetParent(rod, false);
+            var mdl = RodModels.Create(d);
+            if (mdl != null)
+            {
+                // у модели удилище лежит вдоль Z; поворот -90° вокруг X кладёт его вдоль оси Y точки хвата
+                var axis = new GameObject("Ось").transform;
+                axis.SetParent(rodVisual, false);
+                axis.localRotation = Quaternion.Euler(-90f, 0f, 0f);
+                mdl.transform.SetParent(axis, false);
+                mdl.transform.localPosition = new Vector3(0, 0, -RodModels.Grip);
+                mdl.transform.localRotation = Quaternion.identity;
+                float len = d.length > 0.5f ? d.length : 3f;
+                rodTip.localPosition = new Vector3(0, len - RodModels.Grip, 0);
+            }
+            else
+            {
+                var rodGo = WorldBuilder.Prim(PrimitiveType.Cylinder, rodVisual, new Vector3(0, 0.9f, 0), new Vector3(0.022f, 1.1f, 0.022f), Mats.Lit(60, 45, 30, 0.3f));
+                rodGo.name = "Бланк";
+                WorldBuilder.Prim(PrimitiveType.Cylinder, rodVisual, new Vector3(0, 0.25f, 0.05f), new Vector3(0.09f, 0.03f, 0.09f), Mats.Lit(150, 150, 160, 0.6f), false, new Vector3(0, 0, 90));
+                rodTip.localPosition = new Vector3(0, 2.0f, 0);
+            }
+        }
 
         static Transform Pivot(Transform parent, string n, Vector3 p)
         {
@@ -86,13 +115,11 @@ namespace ChinaFishing
                 if (s < 0) { m.legL = leg; m.armL = arm; } else { m.legR = leg; m.armR = arm; }
             }
 
-            // удочка в правой руке
+            // удочка в правой руке: точка хвата, кончик и сменный вид (процедурная базовая удочка или 3D-модель)
             m.rod = Pivot(m.armR, "Удочка", new Vector3(0, -0.6f, 0.02f));
-            var rodGo = WorldBuilder.Prim(PrimitiveType.Cylinder, m.rod, Vector3.zero, new Vector3(0.022f, 1.1f, 0.022f), Mats.Lit(60, 45, 30, 0.3f));
             m.rod.localRotation = Quaternion.Euler(123f, 0, 0);
-            rodGo.transform.localPosition = new Vector3(0, 0.9f, 0);
-            WorldBuilder.Prim(PrimitiveType.Cylinder, m.rod, new Vector3(0, 0.25f, 0.05f), new Vector3(0.09f, 0.03f, 0.09f), Mats.Lit(150, 150, 160, 0.6f), false, new Vector3(0, 0, 90));
             m.rodTip = Pivot(m.rod, "Кончик удочки", new Vector3(0, 2.0f, 0));
+            m.SetRod(null);
             return m;
         }
     }
@@ -147,8 +174,19 @@ namespace ChinaFishing
             return true;
         }
 
+        string rodApplied;
+
+        // Удочка в руке всегда соответствует выбранной в инвентаре
+        void SyncRod()
+        {
+            if (Game.S == null || model == null || rodApplied == Game.S.rod) return;
+            rodApplied = Game.S.rod;
+            model.SetRod(GameData.GetItem(rodApplied));
+        }
+
         void Update()
         {
+            SyncRod();
             if (WorldBuilder.I == null || WorldBuilder.I.terrain == null) return;
             Vector2 mv = (frozen || Inp.UiBlocking) ? Vector2.zero : Inp.Move;
             float yaw = cam != null ? cam.yaw : 0f;

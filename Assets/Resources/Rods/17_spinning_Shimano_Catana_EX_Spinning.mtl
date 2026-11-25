@@ -1,0 +1,49 @@
+newmtl Blank
+Kd 0.0784 0.0902 0.1020
+Ka 0.1 0.1 0.1
+Ks 0.30 0.30 0.30
+Ns 140
+d 1
+
+newmtl Grip
+Kd 0.7255 0.5451 0.3412
+Ka 0.1 0.1 0.1
+Ks 0.15 0.15 0.15
+Ns 30
+d 1
+
+newmtl Seat_Metal
+Kd 0.8118 0.8314 0.8549
+Ka 0.1 0.1 0.1
+Ks 0.69 0.69 0.69
+Ns 140
+d 1
+
+newmtl Seat_Body
+Kd 0.2902 0.3098 0.3333
+Ka 0.1 0.1 0.1
+Ks 0.63 0.63 0.63
+Ns 120
+d 1
+
+newmtl Guides_Metal
+Kd 0.8118 0.8314 0.8549
+Ka 0.1 0.1 0.1
+Ks 0.69 0.69 0.69
+Ns 150
+d 1
+
+newmtl Accent
+Kd 0.1216 0.3725 0.7490
+Ka 0.1 0.1 0.1
+Ks 0.21 0.21 0.21
+Ns 100
+d 1
+
+newmtl Butt_Rubber
+Kd 0.0627 0.0667 0.0706
+Ka 0.1 0.1 0.1
+Ks 0.15 0.15 0.15
+Ns 19
+d 1
+

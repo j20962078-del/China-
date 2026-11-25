@@ -181,7 +181,7 @@ namespace ChinaFishing
         static string Valid(SaveData s, string id, ItemCategory cat, string def)
         {
             var d = GameData.GetItem(id);
-            return d != null && d.cat == cat && OwnsIn(s, d) ? id : def;
+            return d != null && (d.cat == cat || (cat == ItemCategory.Удочки && GameData.IsRod(d.cat))) && OwnsIn(s, d) ? id : def;
         }
 
         static string FirstBait(SaveData s)
@@ -329,7 +329,13 @@ namespace ChinaFishing
             if (d == null || !Owns(d.id)) return;
             switch (d.cat)
             {
-                case ItemCategory.Удочки: S.rod = d.id; break;
+                case ItemCategory.Удочки:
+                case ItemCategory.Фидерные:
+                case ItemCategory.Карповые:
+                case ItemCategory.Пикерные:
+                case ItemCategory.Спиннинговые:
+                case ItemCategory.Поплавочные:
+                case ItemCategory.Маркерные: S.rod = d.id; break;
                 case ItemCategory.Катушки: S.reel = d.id; break;
                 case ItemCategory.Лески: S.line = d.id; break;
                 case ItemCategory.Крючки: S.hook = d.id; break;
