@@ -18,6 +18,7 @@ namespace ChinaFishing
         public Transform root, legL, legR, armL, armR, torso, head, rodTip, rod;
         public GameObject fishHold;
         Transform rodVisual;
+        public RodBend rodBend;   // изгиб удилища (есть только у 3D-моделей)
 
         // Меняет удочку в руке: для удилищ с 3D-моделью — модель (торец рукояти за ладонью, вершинка вперёд), иначе простая базовая
         public void SetRod(ItemDef d)
@@ -25,6 +26,7 @@ namespace ChinaFishing
             if (rodVisual != null) Object.Destroy(rodVisual.gameObject);
             rodVisual = new GameObject("Вид удочки").transform;
             rodVisual.SetParent(rod, false);
+            rodBend = null;
             var mdl = RodModels.Create(d);
             if (mdl != null)
             {
@@ -37,6 +39,8 @@ namespace ChinaFishing
                 mdl.transform.localRotation = Quaternion.identity;
                 float len = d.length > 0.5f ? d.length : 3f;
                 rodTip.localPosition = new Vector3(0, len - RodModels.Grip, 0);
+                rodBend = rodVisual.gameObject.AddComponent<RodBend>();
+                rodBend.Init(mdl, rodTip);
             }
             else
             {

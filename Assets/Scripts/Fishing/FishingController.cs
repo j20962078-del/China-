@@ -89,8 +89,20 @@ namespace ChinaFishing
         float HookMax { get { return Hook.power < 0.9f ? 3f : Hook.power < 1.1f ? 15f : 9999f; } }
 
         void Msg(string s) { if (OnMessage != null) OnMessage(s); }
+        FishBite bite;
+        // Поклёвка гнёт вершинку удилища; компонент создаётся при первом обращении, удилище подставляется заново (оно меняется в рюкзаке)
+        FishBite Bite()
+        {
+            if (bite == null) bite = gameObject.AddComponent<FishBite>();
+            var rb = player != null && player.model != null ? player.model.rodBend : null;
+            if (bite.rod != rb) bite.rod = rb;
+            if (rb != null) rb.pullTarget = bobber;
+            return bite;
+        }
+
         void SetState(FState s)
         {
+            if (s != FState.Вываживание) Bite().Release();   // рыба сошла, поймана или ловля закончена
             state = s;
             // Ходить можно всегда, кроме выбора направления, замаха и самого заброса. Во время вываживания
             // отклонение джойстика влево/вправо по-прежнему считается противодействием рыбе.
@@ -329,6 +341,7 @@ namespace ChinaFishing
             tension = 0.35f; stamina = 1f; overTension = 0f; idleTimer = 0f;
             pullDir = Random.value < 0.5f ? -1 : 1; dirTimer = Random.Range(1.5f, 3f); burstTimer = Random.Range(0.8f, 2f);
             pullBurst = 0f; reeling = false; fishAngle = 0f;
+            Bite().Hook(hookedWeight);   // резкий загиб при подсечке, дальше рывки по весу рыбы
             SetState(FState.Вываживание);
             Msg("Рыба на крючке! Удерживайте «Тянуть» и следите за натяжением.");
             AudioManager.I?.Splash();
@@ -513,6 +526,7 @@ namespace ChinaFishing
             {
                 nibbleTimer = Random.Range(2.5f, 6f);
                 bobberPos += new Vector3(Random.Range(-0.06f, 0.06f), 0, Random.Range(-0.06f, 0.06f));
+                Bite().Nibble(0.5f);   // лёгкий клевок виден на вершинке
             }
             if (waitTimer > 0f) return;
             if (noFishHere)
@@ -527,12 +541,14 @@ namespace ChinaFishing
             biteWindowLeft = biteTimer;
             AudioManager.I?.Bite();
             SetState(FState.Поклёвка);
+            Bite().Nibble(1.4f);
             Msg("Клюёт! Быстро нажмите «Подсечка»!");
         }
 
         void UpdateBite()
         {
             biteTimer -= Time.deltaTime; biteWindowLeft = biteTimer;
+            if (Random.value < 2.5f * Time.deltaTime) Bite().Nibble(0.8f);   // пока можно подсекать, вершинка подрагивает
             if (biteTimer > 0f) return;
             // поклёвка пропущена: наживка НЕ списывается повторно, ловля продолжается
             AudioManager.I?.Fail();
