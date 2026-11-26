@@ -247,6 +247,7 @@ namespace ChinaFishing.EditorTools
                 "Standard", "Nature/Terrain/Standard", "Nature/Terrain/Diffuse", "Hidden/TerrainEngine/Splatmap/Standard-Base",
                 "Hidden/TerrainEngine/Splatmap/Standard-AddPass", "Hidden/TerrainEngine/Splatmap/Diffuse",
                 "Legacy Shaders/Diffuse", "Unlit/Color",
+                "Legacy Shaders/Transparent/Cutout/Diffuse", "Legacy Shaders/Transparent/Cutout/VertexLit", "Legacy Shaders/Transparent/Diffuse", "Mobile/Diffuse",
                 "Skybox/Procedural", "Hidden/TerrainEngine/Details/BillboardWavingDoublePass",
                 "Hidden/TerrainEngine/Details/WavingDoublePass", "Hidden/TerrainEngine/Details/Vertexlit",
                 "Hidden/TerrainEngine/BillboardTree"

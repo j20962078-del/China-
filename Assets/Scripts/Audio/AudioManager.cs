@@ -9,7 +9,8 @@ namespace ChinaFishing
     {
         public static AudioManager I;
         const int SR = 22050;
-        AudioSource wind, water, music, fx, reel;
+        AudioSource wind, water, music, fx, reel, rain, crickets;
+        float lvWind = 0.5f, lvRain, lvBirds = 1f, lvNight;   // уровни, которые ставит Atmosphere
         AudioClip stepClip, whoosh, splash, bite, catchClip, failClip, click, levelUp;
         readonly List<AudioClip> birds = new List<AudioClip>();
         float birdTimer = 4f;
@@ -66,6 +67,14 @@ namespace ChinaFishing
             // ветер и вода (бесшовные петли)
             wind = Src("Ветер", true, LoopNoise("wind", 8f, 0.015f, t => 0.35f + 0.25f * Mathf.Sin(t * Mathf.PI * 2f) * Mathf.Sin(t * Mathf.PI * 6f + 1f)));
             water = Src("Вода", true, LoopNoise("water", 6f, 0.07f, t => 0.3f + 0.15f * Mathf.Sin(t * Mathf.PI * 2f * 5f)));
+            // дождь (шум с яркой окраской) и ночные сверчки
+            rain = Src("Дождь", true, LoopNoise("rain", 5f, 0.5f, t => 0.8f));
+            crickets = Src("Сверчки", true, Make("crickets", 3f, (t, i) =>
+            {
+                float pulse = Mathf.Repeat(t * 11f, 1f) < 0.45f ? 1f : 0f;                      // «тр-тр-тр»
+                float slow = 0.6f + 0.4f * Mathf.Sin(2f * Mathf.PI * t / 3f);
+                return Mathf.Sin(2f * Mathf.PI * 4300f * t) * pulse * slow * 0.07f + Mathf.Sin(2f * Mathf.PI * 3700f * t) * pulse * 0.03f;
+            }));
             // музыка: мягкая пэд-подложка
             float len = 12f;
             Fx(new float[] { 220f, 261.63f, 329.63f, 392f });
@@ -95,7 +104,7 @@ namespace ChinaFishing
             reel = Src("Катушка", true, Make("катушка", 0.4f, (t, i) => (Mathf.Repeat(t, 0.05f) < 0.004f ? 0.5f * Noise(0.9f, i) : 0f) + Mathf.Sin(2f * Mathf.PI * 150f * t) * 0.03f));
             // птицы
             for (int k = 0; k < 4; k++) birds.Add(MakeBird(k));
-            wind.Play(); water.Play(); music.Play();
+            wind.Play(); water.Play(); music.Play(); rain.Play(); crickets.Play();
             ApplyVolumes();
         }
 
@@ -137,20 +146,39 @@ namespace ChinaFishing
         {
             if (Game.S == null) return;
             float m = Game.S.volMaster;
-            if (wind != null) wind.volume = 0.5f * Game.S.volEffects * m;
+            if (wind != null) wind.volume = (0.18f + 0.5f * lvWind) * Game.S.volEffects * m;
+            if (rain != null) rain.volume = 0.7f * lvRain * Game.S.volEffects * m;
+            if (crickets != null) crickets.volume = 0.25f * lvNight * Game.S.volEffects * m;
             if (water != null) water.volume = 0.35f * Game.S.volEffects * m;
             if (music != null) music.volume = Game.S.volMusic * m * 0.8f;
             if (fx != null) fx.volume = Game.S.volEffects * m;
             if (reel != null) reel.volume = 0.5f * Game.S.volEffects * m;
         }
 
+        // Atmosphere: ветер 0..1, дождь 0..1, птицы 0..1 (днём), ночь 0..1 (сверчки)
+        public void SetAmbience(float windLevel, float rainLevel, float birdsLevel, float nightLevel)
+        {
+            lvWind = windLevel; lvRain = rainLevel; lvBirds = birdsLevel; lvNight = nightLevel;
+        }
+
         void Update()
         {
+            // ветер дышит: громкость и тон плавно гуляют
+            if (wind != null && Game.S != null)
+            {
+                float gust = 0.75f + 0.25f * Mathf.Sin(Time.time * 0.37f) * Mathf.Sin(Time.time * 0.11f + 1f) + 0.2f * (Mathf.PerlinNoise(Time.time * 0.2f, 1.3f) - 0.5f);
+                wind.volume = (0.18f + 0.5f * lvWind) * gust * Game.S.volEffects * Game.S.volMaster;
+                wind.pitch = 0.9f + 0.2f * gust;
+            }
+            if (rain != null && Game.S != null) rain.volume = 0.7f * lvRain * Game.S.volEffects * Game.S.volMaster;
+            if (crickets != null && Game.S != null) crickets.volume = 0.25f * lvNight * Game.S.volEffects * Game.S.volMaster;
+
+            // птицы поют днём (чем светлее и суше, тем чаще)
             birdTimer -= Time.deltaTime;
             if (birdTimer <= 0f && fx != null && birds.Count > 0)
             {
-                birdTimer = Random.Range(4f, 11f);
-                P(birds[Random.Range(0, birds.Count)], 0.35f);
+                birdTimer = Random.Range(3f, 9f) / Mathf.Max(0.15f, lvBirds);
+                if (lvBirds > 0.2f) P(birds[Random.Range(0, birds.Count)], 0.35f * lvBirds);
             }
         }
 

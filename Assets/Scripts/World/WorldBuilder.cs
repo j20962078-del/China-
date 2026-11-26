@@ -180,23 +180,8 @@ namespace ChinaFishing
             sun.shadowStrength = 0.8f;
             sun.transform.rotation = Quaternion.Euler(48f, -35f, 0f);
             RenderSettings.sun = sun;
-            RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.55f, 0.7f, 0.92f);
-            RenderSettings.ambientEquatorColor = new Color(0.48f, 0.52f, 0.5f);
-            RenderSettings.ambientGroundColor = new Color(0.25f, 0.22f, 0.17f);
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogDensity = 0.0032f;
-            RenderSettings.fogColor = new Color(0.72f, 0.82f, 0.9f);
-            var sh = Shader.Find("Skybox/Procedural");
-            if (sh != null)
-            {
-                var sky = new Material(sh);
-                sky.SetFloat("_SunSize", 0.05f);
-                sky.SetFloat("_AtmosphereThickness", 0.9f);
-                sky.SetColor("_SkyTint", new Color(0.5f, 0.62f, 0.82f));
-                RenderSettings.skybox = sky;
-            }
+            // небо, ambient, туман, смену дня и ночи, дождь и ночное свечение ведёт Atmosphere
+            Atmosphere.Create(sun);
         }
 
         void BuildTerrain()
@@ -280,34 +265,13 @@ namespace ChinaFishing
             g.transform.SetParent(root, false);
             g.transform.position = kam != null ? new Vector3((KamMap.WaterMinX + KamMap.WaterMaxX) * 0.5f, WaterLevel, (KamMap.WaterMinZ + KamMap.WaterMaxZ) * 0.5f) : new Vector3(0, WaterLevel, 0);
             g.transform.localScale = kam != null ? new Vector3((KamMap.WaterMaxX - KamMap.WaterMinX) / 10f, 1f, (KamMap.WaterMaxZ - KamMap.WaterMinZ) / 10f) : amur != null ? new Vector3(AmurMap.HalfW * 2f / 10f, 1f, AmurMap.HalfH * 2f / 10f) : new Vector3(Size / 10f, 1f, Size / 10f);
-            Vector2 tile = kam != null ? new Vector2(12f, 12f) : amur != null ? new Vector2(60f * AmurMap.HalfW * 2f / Size, 60f * AmurMap.HalfH * 2f / Size) : new Vector2(60, 60);
+            Vector2 tile = kam != null ? new Vector2(90f, 80f) : amur != null ? new Vector2(60f * AmurMap.HalfW * 2f / Size, 60f * AmurMap.HalfH * 2f / Size) : new Vector2(60, 60);
             Object.Destroy(g.GetComponent<Collider>());
             waterNormal = Mats.WaterNormal();
-            waterMat = Resources.Load<Material>("Mat_Water");
-            if (waterMat != null) waterMat = new Material(waterMat);
-            else
-            {
-                var sh = Shader.Find("Standard");
-                if (sh == null) sh = Shader.Find("Legacy Shaders/Diffuse");
-                waterMat = new Material(sh);
-                Mats.Flt(waterMat, "_Mode", 2f);
-                waterMat.SetOverrideTag("RenderType", "Transparent");
-                if (waterMat.HasProperty("_SrcBlend")) { waterMat.SetInt("_SrcBlend", 5); waterMat.SetInt("_DstBlend", 10); waterMat.SetInt("_ZWrite", 0); }
-                waterMat.EnableKeyword("_ALPHABLEND_ON");
-                waterMat.EnableKeyword("_NORMALMAP");
-                waterMat.renderQueue = 3000;
-            }
             var col = kam != null ? kam.waterColor : new Color(0.10f, 0.32f, 0.36f, 0.78f);   // у Камышевского озера цвет воды берётся из модели
-            Mats.Col(waterMat, "_Color", col); Mats.Col(waterMat, "_BaseColor", col);
-            Mats.Flt(waterMat, "_Glossiness", 0.95f); Mats.Flt(waterMat, "_Smoothness", 0.95f);
-            Mats.Flt(waterMat, "_Metallic", 0f);
-            if (waterMat.HasProperty("_BumpMap")) { waterMat.SetTexture("_BumpMap", waterNormal); waterMat.SetTextureScale("_BumpMap", tile); }
-            Mats.Flt(waterMat, "_BumpScale", 0.6f);
-            if (waterMat.HasProperty("_MainTex")) waterMat.SetTextureScale("_MainTex", tile);
-            if (waterMat.HasProperty("_BaseMap")) waterMat.SetTextureScale("_BaseMap", tile);
+            waterMat = Mats.Water(col, waterNormal, tile);   // собственный шейдер: рябь, отражение неба, блик солнца/луны
             g.GetComponent<Renderer>().sharedMaterial = waterMat;
             water = g.transform;
-            g.AddComponent<WaterAnimator>().Init(waterMat);
         }
 
         // ---------------- ПРИМИТИВЫ ----------------
@@ -878,6 +842,7 @@ namespace ChinaFishing
 
             BuildKamPier(scene.transform);
             BuildWater();
+            foreach (var lp in k.parts) if (lp.cat == "Lamps" && lp.mat == "LampGlow" && Atmosphere.I != null) Atmosphere.I.AddLampsFromMesh(lp.mesh);
             DefineSpotsKam();
         }
 

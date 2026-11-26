@@ -860,10 +860,27 @@ namespace ChinaFishing
                 qualBtns[i] = B(c, q[i], UIKit.Panel2, new Vector2(0, 1), new Vector2(560 + i * 240, -370), new Vector2(225, 80), () => { Game.S.quality = k; Game.ApplyQuality(); Game.Save(); RefreshSettings(); }, 34);
             }
             setQualityInfo = Label(c, "", 28, new Vector2(0, 1), new Vector2(0, -470), new Vector2(1500, 90), TextAnchor.UpperLeft, UIKit.Dim);
-            B(c, "Сбросить прогресс", UIKit.Red, new Vector2(0, 1), new Vector2(0, -600), new Vector2(520, 90), () => ConfirmReset(), 36);
+            // погода и время суток (Atmosphere)
+            Label(c, "Погода", 38, new Vector2(0, 1), new Vector2(0, -600), new Vector2(540, 70), TextAnchor.MiddleLeft);
+            string[] wn = { "Авто", "Дождь", "Ясно" };
+            for (int i = 0; i < 3; i++)
+            {
+                int k = i;
+                weatherBtns[i] = B(c, wn[i], UIKit.Panel2, new Vector2(0, 1), new Vector2(560 + i * 240, -600), new Vector2(225, 80), () =>
+                {
+                    if (Atmosphere.I != null) Atmosphere.I.SetRain(k == 0 ? Atmosphere.RainMode.Auto : k == 1 ? Atmosphere.RainMode.On : Atmosphere.RainMode.Off);
+                    RefreshSettings();
+                }, 34);
+            }
+            Label(c, "Время суток", 38, new Vector2(0, 1), new Vector2(0, -710), new Vector2(540, 70), TextAnchor.MiddleLeft);
+            timeSlider = UIKit.MakeSlider(c, 0.4f, v => { if (Atmosphere.I != null) Atmosphere.I.SetHour(v * 24f); });
+            UIKit.At(timeSlider.GetComponent<RectTransform>(), new Vector2(0, 1), new Vector2(560, -710), new Vector2(700, 70));
+            B(c, "Сбросить прогресс", UIKit.Red, new Vector2(0, 1), new Vector2(0, -820), new Vector2(520, 90), () => ConfirmReset(), 36);
             Label(c, "China Fishing · версия 0.6", 28, new Vector2(0, 0), new Vector2(0, 0), new Vector2(900, 50), TextAnchor.MiddleLeft, UIKit.Gray);
         }
 
+        Button[] weatherBtns = new Button[3];
+        Slider timeSlider;
         bool resetArmed;
         void ConfirmReset()
         {
@@ -883,6 +900,12 @@ namespace ChinaFishing
         {
             sliders[0].SetValueWithoutNotify(Game.S.volMaster); sliders[1].SetValueWithoutNotify(Game.S.volMusic); sliders[2].SetValueWithoutNotify(Game.S.volEffects);
             for (int i = 0; i < 3; i++) qualBtns[i].GetComponent<Image>().color = i == Game.S.quality ? UIKit.Accent : UIKit.Panel2;
+            if (Atmosphere.I != null)
+            {
+                int wm = (int)Atmosphere.I.rainMode;   // Auto=0, On=1, Off=2
+                for (int i = 0; i < 3; i++) if (weatherBtns[i] != null) weatherBtns[i].GetComponent<Image>().color = i == wm ? UIKit.Accent : UIKit.Panel2;
+                if (timeSlider != null) timeSlider.SetValueWithoutNotify(Atmosphere.I.hour / 24f);
+            }
             string[] info = { "Низкое: без теней, минимум травы и деревьев, 30 кадров/с — для слабых телефонов.", "Среднее: жёсткие тени, умеренная трава, 45 кадров/с.", "Высокое: мягкие тени, густая трава, 60 кадров/с." };
             setQualityInfo.text = info[Mathf.Clamp(Game.S.quality, 0, 2)] + "\nИзменение растительности применится при следующем запуске.";
         }

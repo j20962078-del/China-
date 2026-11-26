@@ -88,10 +88,49 @@ namespace ChinaFishing
                     for (int i = 0; i < ni; i++) tri[i] = r.ReadInt32();
                     var mesh = new Mesh(); mesh.name = part.cat + "_" + part.mat;
                     if (nv > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-                    mesh.vertices = v; mesh.normals = n; mesh.uv = uv; mesh.triangles = tri; mesh.RecalculateBounds();
+                    mesh.vertices = v; mesh.normals = n; mesh.uv = uv; mesh.triangles = tri;
+                    MatInfo pmi;
+                    if (mats.TryGetValue(part.mat, out pmi)) BakeSway(mesh, v, tri, pmi.mode == 1, part.cat == "Forest" && part.mat == "Spruce");
+                    mesh.RecalculateBounds();
                     part.mesh = mesh; parts.Add(part);
                 }
             }
+        }
+
+
+        // Вес качания на ветру пишем в красный канал вершинного цвета: 0 у корня, 1 у верхушки.
+        // Травы и камыши (плоские «крестовины»): считаем по высоте внутри каждого треугольника.
+        // Хвоя: по высоте над землёй (≈9 м — полный вес). Остальное не качается.
+        void BakeSway(Mesh mesh, Vector3[] v, int[] tri, bool plant, bool tree)
+        {
+            if (!plant && !tree) return;
+            var col = new Color32[v.Length];
+            for (int i = 0; i < col.Length; i++) col[i] = new Color32(0, 0, 0, 255);
+            if (plant)
+            {
+                for (int t = 0; t + 2 < tri.Length; t += 3)
+                {
+                    float y0 = v[tri[t]].y, y1 = v[tri[t + 1]].y, y2 = v[tri[t + 2]].y;
+                    float lo = Mathf.Min(y0, Mathf.Min(y1, y2)), hi = Mathf.Max(y0, Mathf.Max(y1, y2)), hg = hi - lo;
+                    if (hg < 0.02f) continue;                        // горизонтальные листья кувшинок не качаем
+                    for (int e = 0; e < 3; e++)
+                    {
+                        int vi = tri[t + e];
+                        byte w = (byte)Mathf.RoundToInt(Mathf.Clamp01((v[vi].y - lo) / hg) * 255f);
+                        if (w > col[vi].r) col[vi] = new Color32(w, 0, 0, 255);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < v.Length; i++)
+                {
+                    float gy = Mathf.Max(Height(v[i].x, v[i].z), WaterY);
+                    byte w = (byte)Mathf.RoundToInt(Mathf.Clamp01((v[i].y - gy) / 9f) * 255f);
+                    col[i] = new Color32(w, 0, 0, 255);
+                }
+            }
+            mesh.colors32 = col;
         }
 
         // ---------------- ВЫСОТА ----------------
@@ -149,11 +188,36 @@ namespace ChinaFishing
             var c = new Color(0.58f, 0.88f, 0.42f, 1f);
             Mats.Col(m, "_Color", c); Mats.Col(m, "_BaseColor", c);
             matCache["_ground"] = m;
+            Atmosphere.RegisterWet(m);
             return m;
         }
 
         // ---------------- МАТЕРИАЛЫ ----------------
         readonly Dictionary<string, Material> matCache = new Dictionary<string, Material>();
+
+        Texture2D LoadTex(string tex)
+        {
+            if (string.IsNullOrEmpty(tex)) return null;
+            var ta = Resources.Load<TextAsset>("Kamyshevskoe/" + tex);
+            if (ta == null) return null;
+            var t = new Texture2D(2, 2, TextureFormat.RGBA32, true);
+            if (!t.LoadImage(ta.bytes, false)) return null;
+            t.wrapMode = TextureWrapMode.Repeat; t.filterMode = FilterMode.Bilinear; t.anisoLevel = 4;
+            return t;
+        }
+
+        // Сила и скорость качания по названию материала (м, цикл/с). Кувшинки не качаются.
+        static void WindFor(string name, out float amp, out float speed)
+        {
+            switch (name)
+            {
+                case "GrassTuft": amp = 0.10f; speed = 1.9f; break;
+                case "Cattail": amp = 0.20f; speed = 1.2f; break;
+                case "Reed": amp = 0.22f; speed = 1.1f; break;
+                case "Spruce": amp = 0.35f; speed = 0.8f; break;   // деревья: медленнее и мягче
+                default: amp = 0f; speed = 1f; break;
+            }
+        }
 
         public Material GetMaterial(string name)
         {
@@ -161,38 +225,41 @@ namespace ChinaFishing
             if (matCache.TryGetValue(name, out m)) return m;
             MatInfo mi;
             if (!mats.TryGetValue(name, out mi)) { m = Mats.Lit(new Color(0.5f, 0.5f, 0.5f), 0.1f); matCache[name] = m; return m; }
-            Material baseMat = null;
-            if (mi.mode == 1) baseMat = Resources.Load<Material>("Mat_Cutout");   // шаблон с включённым вырезом по альфе (создаёт ProjectBuilder)
-            float gloss = mi.mode == 1 ? 0.05f : Mathf.Clamp01(mi.gloss);
-            m = baseMat != null ? new Material(baseMat) : new Material(Mats.Lit(new Color(mi.color.r, mi.color.g, mi.color.b, 1f), gloss));
-            m.name = name;
-            Mats.Flt(m, "_Glossiness", gloss); Mats.Flt(m, "_Smoothness", gloss);
-            if (!string.IsNullOrEmpty(mi.tex))
-            {
-                var ta = Resources.Load<TextAsset>("Kamyshevskoe/" + mi.tex);
-                if (ta != null)
-                {
-                    var t = new Texture2D(2, 2, TextureFormat.RGBA32, true);
-                    if (t.LoadImage(ta.bytes, false))
-                    {
-                        t.wrapMode = TextureWrapMode.Repeat; t.filterMode = FilterMode.Bilinear; t.anisoLevel = 4;
-                        m.mainTexture = t;
-                        if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", t);
-                        Mats.Col(m, "_Color", Color.white); Mats.Col(m, "_BaseColor", Color.white);
-                    }
-                }
-            }
+            float amp, speed; WindFor(name, out amp, out speed);
+            var tex = LoadTex(mi.tex);
+
             if (mi.mode == 1)
             {
-                // трава, камыши, кувшинки: прозрачные места текстуры вырезаются (двусторонность заложена в меш)
-                Mats.Flt(m, "_Mode", 1f); Mats.Flt(m, "_Cutoff", 0.5f);
-                Mats.Flt(m, "_SrcBlend", 1f); Mats.Flt(m, "_DstBlend", 0f); Mats.Flt(m, "_ZWrite", 1f);
-                m.SetOverrideTag("RenderType", "TransparentCutout");
-                m.EnableKeyword("_ALPHATEST_ON");
-                m.DisableKeyword("_ALPHABLEND_ON");
-                m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                m.renderQueue = 2450;
+                // трава, камыши, кувшинки: свой шейдер с вырезом по альфе (Alpha Cutoff 0.4), двусторонность заложена в меш
+                m = Mats.Foliage(tex, Color.white, 0.4f, amp, speed);
             }
+            else if (name == "Spruce")
+            {
+                m = Mats.Foliage(null, new Color(mi.color.r, mi.color.g, mi.color.b, 1f), 0.0f, amp, speed);
+            }
+            else if (name == "Window_glass")
+            {
+                // окна: днём светлое стекло, ночью тёплое свечение (часть окон остаётся тёмной)
+                m = Mats.Glow(mi.color, new Color(1f, 0.78f, 0.45f), 0.35f);
+            }
+            else if (name == "LampGlow")
+            {
+                m = Mats.Glow(mi.color, new Color(1f, 0.85f, 0.55f), 0f);
+            }
+            else
+            {
+                float gloss = Mathf.Clamp01(mi.gloss);
+                m = new Material(Mats.Lit(new Color(mi.color.r, mi.color.g, mi.color.b, 1f), gloss));
+                if (tex != null)
+                {
+                    m.mainTexture = tex;
+                    if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
+                    Mats.Col(m, "_Color", Color.white); Mats.Col(m, "_BaseColor", Color.white);
+                }
+                // земля, камни, доски, гравий мокнут под дождём
+                if (name == "Rock" || name == "Gravel" || name == "Planks") Atmosphere.RegisterWet(m);
+            }
+            m.name = name;
             matCache[name] = m;
             return m;
         }

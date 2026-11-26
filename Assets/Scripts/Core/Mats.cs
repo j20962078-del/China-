@@ -47,6 +47,58 @@ namespace ChinaFishing
             return Lit(new Color(r / 255f, g / 255f, b / 255f), smooth);
         }
 
+
+        // ---------------- СОБСТВЕННЫЕ ШЕЙДЕРЫ (лежат в Resources/Shaders, поэтому всегда попадают в сборку) ----------------
+        static Shader LoadShader(string file, string fallback)
+        {
+            var sh = Resources.Load<Shader>("Shaders/" + file);
+            if (sh == null || !sh.isSupported) sh = Shader.Find(fallback);
+            return sh;
+        }
+
+        // Трава, камыши, кувшинки, хвоя: вырез по альфе + качание на ветру + GPU Instancing.
+        // Если собственный шейдер недоступен — запасной Legacy Shaders/Transparent/Cutout/Diffuse, затем Mobile/Diffuse.
+        public static Material Foliage(Texture tex, Color tint, float cutoff, float windAmp, float windSpeed)
+        {
+            var sh = LoadShader("CFFoliage", "Legacy Shaders/Transparent/Cutout/Diffuse");
+            if (sh == null) sh = Shader.Find("Mobile/Diffuse");
+            if (sh == null) sh = Shader.Find("Standard");
+            var m = new Material(sh);
+            m.enableInstancing = true;
+            m.renderQueue = 2450;
+            if (tex != null) m.mainTexture = tex;
+            Col(m, "_Color", tint);
+            Flt(m, "_Cutoff", Mathf.Clamp(cutoff, 0.05f, 0.95f));
+            Flt(m, "_WindAmp", windAmp);
+            Flt(m, "_WindSpeed", windSpeed);
+            return m;
+        }
+
+        // Окна и фонари: свечение включает Atmosphere ночью (_GlowAmount). rand — доля окон, остающихся тёмными.
+        public static Material Glow(Color baseColor, Color glow, float rand, Texture tex = null)
+        {
+            var sh = LoadShader("CFGlow", "Legacy Shaders/Diffuse");
+            var m = new Material(sh != null ? sh : Shader.Find("Standard"));
+            if (tex != null) m.mainTexture = tex;
+            Col(m, "_Color", baseColor);
+            Col(m, "_GlowColor", glow);
+            Flt(m, "_Rand", rand);
+            Flt(m, "_GlowAmount", 0f);
+            Atmosphere.RegisterGlow(m);
+            return m;
+        }
+
+        public static Material Water(Color shallow, Texture normal, Vector2 tile)
+        {
+            var sh = LoadShader("CFWater", "Legacy Shaders/Transparent/Diffuse");
+            var m = new Material(sh != null ? sh : Shader.Find("Standard"));
+            Col(m, "_Color", shallow);
+            Col(m, "_DeepColor", new Color(shallow.r * 0.25f, shallow.g * 0.3f, shallow.b * 0.35f, 1f));
+            if (m.HasProperty("_BumpMap")) { m.SetTexture("_BumpMap", normal); m.SetTextureScale("_BumpMap", tile); }
+            m.renderQueue = 3000;
+            return m;
+        }
+
         // Зелёный/коричневый цветной шум 64x64
         public static Texture2D NoiseTex(Color a, Color b, float scale, int size = 64, int seed = 0)
         {
