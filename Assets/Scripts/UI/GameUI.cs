@@ -860,22 +860,23 @@ namespace ChinaFishing
                 qualBtns[i] = B(c, q[i], UIKit.Panel2, new Vector2(0, 1), new Vector2(560 + i * 240, -370), new Vector2(225, 80), () => { Game.S.quality = k; Game.ApplyQuality(); Game.Save(); RefreshSettings(); }, 34);
             }
             setQualityInfo = Label(c, "", 28, new Vector2(0, 1), new Vector2(0, -470), new Vector2(1500, 90), TextAnchor.UpperLeft, UIKit.Dim);
-            // погода и время суток (Atmosphere)
-            Label(c, "Погода", 38, new Vector2(0, 1), new Vector2(0, -600), new Vector2(540, 70), TextAnchor.MiddleLeft);
-            string[] wn = { "Авто", "Дождь", "Ясно" };
+            // погода и время суток (Atmosphere): правая колонка, чтобы всё помещалось по высоте
+            Label(c, "Погода", 38, new Vector2(0, 1), new Vector2(1300, -20), new Vector2(420, 70), TextAnchor.MiddleLeft);
+            string[] wn = { "Как в мире", "Дождь", "Ясно" };
             for (int i = 0; i < 3; i++)
             {
                 int k = i;
-                weatherBtns[i] = B(c, wn[i], UIKit.Panel2, new Vector2(0, 1), new Vector2(560 + i * 240, -600), new Vector2(225, 80), () =>
+                weatherBtns[i] = B(c, wn[i], UIKit.Panel2, new Vector2(0, 1), new Vector2(1300, -100 - i * 95), new Vector2(420, 80), () =>
                 {
                     if (Atmosphere.I != null) Atmosphere.I.SetRain(k == 0 ? Atmosphere.RainMode.Auto : k == 1 ? Atmosphere.RainMode.On : Atmosphere.RainMode.Off);
                     RefreshSettings();
-                }, 34);
+                }, 32);
             }
-            Label(c, "Время суток", 38, new Vector2(0, 1), new Vector2(0, -710), new Vector2(540, 70), TextAnchor.MiddleLeft);
+            Label(c, "Время суток", 38, new Vector2(0, 1), new Vector2(1300, -400), new Vector2(420, 70), TextAnchor.MiddleLeft);
             timeSlider = UIKit.MakeSlider(c, 0.4f, v => { if (Atmosphere.I != null) Atmosphere.I.SetHour(v * 24f); });
-            UIKit.At(timeSlider.GetComponent<RectTransform>(), new Vector2(0, 1), new Vector2(560, -710), new Vector2(700, 70));
-            B(c, "Сбросить прогресс", UIKit.Red, new Vector2(0, 1), new Vector2(0, -820), new Vector2(520, 90), () => ConfirmReset(), 36);
+            UIKit.At(timeSlider.GetComponent<RectTransform>(), new Vector2(0, 1), new Vector2(1300, -480), new Vector2(420, 70));
+            B(c, "Время мира", UIKit.Panel2, new Vector2(0, 1), new Vector2(1300, -570), new Vector2(420, 80), () => { if (Atmosphere.I != null) Atmosphere.I.ResetTime(); RefreshSettings(); }, 32);
+            B(c, "Сбросить прогресс", UIKit.Red, new Vector2(0, 1), new Vector2(0, -600), new Vector2(520, 90), () => ConfirmReset(), 36);
             Label(c, "China Fishing · версия 0.6", 28, new Vector2(0, 0), new Vector2(0, 0), new Vector2(900, 50), TextAnchor.MiddleLeft, UIKit.Gray);
         }
 

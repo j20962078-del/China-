@@ -11,6 +11,7 @@ Shader "ChinaFishing/Foliage"
         _WindAmp ("Сила ветра (м)", Float) = 0.15
         _WindSpeed ("Скорость ветра", Float) = 1.5
         _WindScale ("Размер порывов", Float) = 0.35
+        _Flutter ("Дрожание листвы (м)", Float) = 0
         _Light ("Рассеянный свет листвы", Range(0,1)) = 0.35
     }
     SubShader
@@ -26,7 +27,7 @@ Shader "ChinaFishing/Foliage"
 
         sampler2D _MainTex;
         fixed4 _Color;
-        float _WindAmp, _WindSpeed, _WindScale, _Light;
+        float _WindAmp, _WindSpeed, _WindScale, _Light, _Flutter;
         float _CFWind;   // глобально: множитель ветра (ставит Atmosphere)
         float _CFWet;    // глобально: 0 сухо … 1 дождь
 
@@ -41,7 +42,9 @@ Shader "ChinaFishing/Foliage"
             float amp = _WindAmp * _CFWind * w * w;
             v.vertex.x += g * amp;
             v.vertex.z += g * amp * 0.6;
-            v.vertex.y -= abs(g) * amp * 0.15;         // при наклоне верхушка чуть опускается
+            v.vertex.y -= abs(g) * amp * 0.15;
+            float fl = sin(_Time.y * _WindSpeed * 6.0 + v.vertex.x * 3.1 + v.vertex.z * 2.3) * _Flutter * _CFWind * w;
+            v.vertex.xyz += float3(fl, fl * 0.5, -fl);         // при наклоне верхушка чуть опускается
         }
 
         void surf (Input IN, inout SurfaceOutput o)

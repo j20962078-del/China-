@@ -842,7 +842,13 @@ namespace ChinaFishing
 
             BuildKamPier(scene.transform);
             BuildWater();
-            foreach (var lp in k.parts) if (lp.cat == "Lamps" && lp.mat == "LampGlow" && Atmosphere.I != null) Atmosphere.I.AddLampsFromMesh(lp.mesh);
+            Atmosphere.WaterY = KamMap.WaterY;
+            foreach (var lp in k.parts)
+            {
+                if (Atmosphere.I == null) break;
+                if (lp.cat == "Lamps" && lp.mat == "LampGlow") Atmosphere.I.AddLampsFromMesh(lp.mesh);                       // фонари
+                else if (lp.cat == "Village" && lp.mat == "Window_glass") Atmosphere.I.AddLampsFromMesh(lp.mesh, 5f, 0.45f, 0.2f);   // тёплый свет из окон у домов
+            }
             DefineSpotsKam();
         }
 

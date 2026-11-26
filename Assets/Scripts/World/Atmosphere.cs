@@ -10,11 +10,21 @@ namespace ChinaFishing
     public class Atmosphere : MonoBehaviour
     {
         public static Atmosphere I;
+        public static float WaterY = 0f;      // уровень воды для кругов дождя (ставит WorldBuilder)
 
         public enum RainMode { Auto, On, Off }
 
-        public float hour = 9.5f;            // время суток, 0..24
+        // ЕДИНОЕ ВРЕМЯ МИРА. Время суток и погода считаются из общих часов (по умолчанию UTC), а не из случайных таймеров,
+        // поэтому у всех игроков в одно и то же мгновение одинаковые день/ночь и дождь. В онлайн-версии достаточно подменить
+        // WorldClock на серверное время (секунды) — больше ничего менять не нужно.
+        public static System.Func<double> WorldClock = DefaultClock;
+        static double DefaultClock() { return (System.DateTime.UtcNow - new System.DateTime(1970, 1, 1)).TotalSeconds; }
+
         public float dayMinutes = 24f;       // длина суток в реальных минутах
+        public float weatherSlotSeconds = 240f;   // погода меняется «слотами» по 4 минуты; в каждом слоте решение одинаково для всех
+        public float rainChance = 0.30f;     // доля слотов с дождём
+        public float hour;                   // текущее время суток 0..24 (только чтение)
+        float hourOffset;                    // ручной сдвиг времени (ползунок); 0 = время мира
         public bool timePaused;
         public RainMode rainMode = RainMode.Auto;
 
@@ -28,7 +38,7 @@ namespace ChinaFishing
         Camera cam;
         ParticleSystem rainPs;
         Material rainMat;
-        float rainTarget, rainTimer = 150f;
+        float rainTarget;
 
         // ---------- реестры материалов (материалы сами регистрируются при создании) ----------
         class WetMat { public Material m; public Color color; public float gloss; }
@@ -142,22 +152,24 @@ namespace ChinaFishing
 
         // ---------- фонари: пул точечных источников света ----------
         readonly List<Vector3> lamps = new List<Vector3>();
+        readonly List<float> lampPower = new List<float>();   // 1 — фонарь, меньше — тёплый свет из окон
         readonly List<Light> lampLights = new List<Light>();
         float lampTimer;
+        float[] targetI = new float[16];
 
         // Центры фонарей берутся из меша «LampGlow» (вершины лампочек группируются по ячейкам 2,5 м)
-        public void AddLampsFromMesh(Mesh mesh)
+        public void AddLampsFromMesh(Mesh mesh, float cell = 2.5f, float power = 1f, float dy = 0f)
         {
             if (mesh == null) return;
             var sums = new Dictionary<long, Vector4>();
             foreach (var v in mesh.vertices)
             {
-                long key = ((long)Mathf.RoundToInt(v.x / 2.5f) << 32) ^ (long)(Mathf.RoundToInt(v.z / 2.5f) & 0xFFFFFFF);
+                long key = ((long)Mathf.RoundToInt(v.x / cell) << 32) ^ (long)(Mathf.RoundToInt(v.z / cell) & 0xFFFFFFF);
                 Vector4 s; sums.TryGetValue(key, out s);
                 sums[key] = new Vector4(s.x + v.x, s.y + v.y, s.z + v.z, s.w + 1f);
             }
-            foreach (var kv in sums) lamps.Add(new Vector3(kv.Value.x, kv.Value.y, kv.Value.z) / kv.Value.w);
-            int n = Game.S != null ? (Game.S.quality == 0 ? 1 : Game.S.quality == 1 ? 2 : 4) : 2;
+            foreach (var kv in sums) { lamps.Add(new Vector3(kv.Value.x, kv.Value.y, kv.Value.z) / kv.Value.w + Vector3.up * dy); lampPower.Add(power); }
+            int n = Game.S != null ? (Game.S.quality == 0 ? 2 : Game.S.quality == 1 ? 3 : 5) : 3;
             while (lampLights.Count < n)
             {
                 var g = new GameObject("Свет фонаря");
@@ -173,7 +185,7 @@ namespace ChinaFishing
         void UpdateLamps(float glow)
         {
             lampTimer -= Time.deltaTime;
-            if (lampTimer > 0f) { for (int i = 0; i < lampLights.Count; i++) if (lampLights[i].enabled) lampLights[i].intensity = Mathf.Lerp(lampLights[i].intensity, 2.2f * glow, Time.deltaTime * 4f); return; }
+            if (lampTimer > 0f) { for (int i = 0; i < lampLights.Count; i++) if (lampLights[i].enabled) lampLights[i].intensity = Mathf.Lerp(lampLights[i].intensity, targetI[i] * glow, Time.deltaTime * 4f); return; }
             lampTimer = 0.5f;
             if (cam == null || lamps.Count == 0) return;
             var cp = cam.transform.position;
@@ -186,6 +198,9 @@ namespace ChinaFishing
                 if (i < order.Count && (lamps[order[i]] - cp).sqrMagnitude < 70f * 70f && glow > 0.02f)
                 {
                     l.transform.position = lamps[order[i]] + Vector3.down * 0.3f;
+                    float pw = lampPower[order[i]];
+                    targetI[i] = 2.2f * pw; l.range = 16f * Mathf.Lerp(0.55f, 1f, pw);
+                    l.color = pw < 0.9f ? new Color(1f, 0.72f, 0.4f) : new Color(1f, 0.8f, 0.5f);   // окна теплее фонарей
                     l.enabled = true;
                 }
                 else { l.enabled = false; l.intensity = 0f; }
@@ -229,6 +244,44 @@ namespace ChinaFishing
             r.sharedMaterial = rainMat;
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             r.receiveShadows = false;
+            BuildRings();
+        }
+
+        ParticleSystem ringPs;
+
+        // Круги от капель на воде: плоские кольца вокруг игрока на уровне воды, растут и гаснут
+        void BuildRings()
+        {
+            var tex = new Texture2D(32, 32, TextureFormat.RGBA32, false);
+            for (int y = 0; y < 32; y++)
+                for (int x = 0; x < 32; x++)
+                {
+                    float d = Vector2.Distance(new Vector2(x, y), new Vector2(15.5f, 15.5f)) / 15.5f;
+                    float a = Mathf.Clamp01(1f - Mathf.Abs(d - 0.8f) / 0.14f);
+                    tex.SetPixel(x, y, new Color(1, 1, 1, a * (d < 1f ? 1f : 0f)));
+                }
+            tex.Apply(); tex.wrapMode = TextureWrapMode.Clamp;
+            var m = new Material(rainMat.shader); m.mainTexture = tex;
+            var go = new GameObject("Круги дождя"); go.transform.SetParent(transform, false);
+            go.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
+            ringPs = go.AddComponent<ParticleSystem>();
+            var main = ringPs.main;
+            main.loop = true; main.playOnAwake = false; main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = 0.7f; main.startSpeed = 0f; main.startSize = 0.6f; main.maxParticles = 300;
+            main.startColor = new Color(0.85f, 0.92f, 1f, 0.5f);
+            var sh = ringPs.shape; sh.enabled = true; sh.shapeType = ParticleSystemShapeType.Circle; sh.radius = 16f;
+            var em = ringPs.emission; em.enabled = true; em.rateOverTime = 0f;
+            var sol = ringPs.sizeOverLifetime; sol.enabled = true;
+            sol.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(new Keyframe(0f, 0.25f), new Keyframe(1f, 1.3f)));
+            var col = ringPs.colorOverLifetime; col.enabled = true;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(0f, 1f) });
+            col.color = g;
+            var r = go.GetComponent<ParticleSystemRenderer>();
+            r.renderMode = ParticleSystemRenderMode.HorizontalBillboard;
+            r.sharedMaterial = m;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
         }
 
         float RainRate()
@@ -240,26 +293,46 @@ namespace ChinaFishing
         // ---------- публичное управление ----------
         public void SetRain(RainMode mode) { rainMode = mode; if (mode == RainMode.On) rainTarget = 1f; else if (mode == RainMode.Off) rainTarget = 0f; }
         public void ToggleRain() { SetRain(rainTarget > 0.5f ? RainMode.Off : RainMode.On); }
-        public void SetHour(float h) { hour = Mathf.Repeat(h, 24f); }
+        public void SetHour(float h) { hourOffset = Mathf.Repeat(h - ClockHour(), 24f); }
+        public void ResetTime() { hourOffset = 0f; }
+
+        float ClockHour() { return (float)(WorldClock() / (dayMinutes * 60.0) % 1.0) * 24f; }
+
+        static float Hash01(long n)
+        {
+            unchecked
+            {
+                ulong x = (ulong)n * 0x9E3779B97F4A7C15UL;
+                x ^= x >> 29; x *= 0xBF58476D1CE4E5B9UL; x ^= x >> 32;
+                return (x & 0xFFFFFF) / 16777215f;
+            }
+        }
+
+        // Погода мира в данный момент: 0 ясно … 1 сильный дождь. Одинакова для всех клиентов с общими часами.
+        // Внутри слота есть «разгон» и «затухание», чтобы дождь не включался рывком.
+        public float WorldRain()
+        {
+            double t = WorldClock();
+            long slot = (long)System.Math.Floor(t / weatherSlotSeconds);
+            float frac = (float)(t / weatherSlotSeconds - slot);
+            float Strength(long sl) { float h = Hash01(sl); return h < rainChance ? Mathf.Lerp(0.45f, 1f, Hash01(sl + 7919L)) : 0f; }
+            float cur = Strength(slot), prev = Strength(slot - 1), next = Strength(slot + 1);
+            float v = cur;
+            if (frac < 0.15f) v = Mathf.Lerp(prev, cur, Mathf.SmoothStep(0f, 1f, frac / 0.15f));
+            else if (frac > 0.85f) v = Mathf.Lerp(cur, next, Mathf.SmoothStep(0f, 1f, (frac - 0.85f) / 0.15f));
+            return v;
+        }
 
         // ---------- обновление ----------
         void Update()
         {
             if (cam == null) cam = Camera.main;
-            if (!timePaused) hour = Mathf.Repeat(hour + Time.deltaTime * 24f / (dayMinutes * 60f), 24f);
+            hour = Mathf.Repeat(ClockHour() + hourOffset, 24f);
 
-            if (rainMode == RainMode.Auto)
-            {
-                rainTimer -= Time.deltaTime;
-                if (rainTimer <= 0f)
-                {
-                    bool start = rainTarget < 0.5f;
-                    rainTarget = start ? 1f : 0f;
-                    rainTimer = start ? Random.Range(70f, 180f) : Random.Range(150f, 420f);
-                }
-            }
-            Rain = Mathf.MoveTowards(Rain, rainTarget, Time.deltaTime / 8f);
-            Wet = Mathf.MoveTowards(Wet, rainTarget > 0.5f ? 1f : 0f, Time.deltaTime / (rainTarget > 0.5f ? 20f : 100f));
+            if (rainMode == RainMode.Auto) rainTarget = WorldRain();
+            // плавное приближение к цели: в «Авто» цель уже плавная, поэтому следуем почти напрямую
+            Rain = Mathf.MoveTowards(Rain, rainTarget, Time.deltaTime / (rainMode == RainMode.Auto ? 2f : 8f));
+            Wet = Mathf.MoveTowards(Wet, rainTarget > 0.3f ? 1f : 0f, Time.deltaTime / (rainTarget > 0.3f ? 20f : 100f));
             Apply(Time.deltaTime);
         }
 
@@ -336,6 +409,13 @@ namespace ChinaFishing
             {
                 var em = rainPs.emission; em.rateOverTime = RainRate() * Rain;
                 if (cam != null) rainPs.transform.position = cam.transform.position + Vector3.up * 12f;
+                if (ringPs != null)
+                {
+                    var rem = ringPs.emission; rem.rateOverTime = (RainRate() * 0.08f) * Rain;
+                    if (cam != null) ringPs.transform.position = new Vector3(cam.transform.position.x, WaterY + 0.03f, cam.transform.position.z);
+                    if (Rain > 0.02f && !ringPs.isPlaying) ringPs.Play();
+                    else if (Rain <= 0.02f && ringPs.isPlaying) ringPs.Stop(false, ParticleSystemStopBehavior.StopEmitting);
+                }
                 if (Rain > 0.02f && !rainPs.isPlaying) rainPs.Play();
                 else if (Rain <= 0.02f && rainPs.isPlaying) rainPs.Stop(false, ParticleSystemStopBehavior.StopEmitting);
             }

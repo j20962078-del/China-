@@ -58,7 +58,7 @@ namespace ChinaFishing
 
         // Трава, камыши, кувшинки, хвоя: вырез по альфе + качание на ветру + GPU Instancing.
         // Если собственный шейдер недоступен — запасной Legacy Shaders/Transparent/Cutout/Diffuse, затем Mobile/Diffuse.
-        public static Material Foliage(Texture tex, Color tint, float cutoff, float windAmp, float windSpeed)
+        public static Material Foliage(Texture tex, Color tint, float cutoff, float windAmp, float windSpeed, float flutter = 0f)
         {
             var sh = LoadShader("CFFoliage", "Legacy Shaders/Transparent/Cutout/Diffuse");
             if (sh == null) sh = Shader.Find("Mobile/Diffuse");
@@ -71,6 +71,7 @@ namespace ChinaFishing
             Flt(m, "_Cutoff", Mathf.Clamp(cutoff, 0.05f, 0.95f));
             Flt(m, "_WindAmp", windAmp);
             Flt(m, "_WindSpeed", windSpeed);
+            Flt(m, "_Flutter", flutter);
             return m;
         }
 

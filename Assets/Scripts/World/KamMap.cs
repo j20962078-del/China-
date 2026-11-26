@@ -90,7 +90,7 @@ namespace ChinaFishing
                     if (nv > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
                     mesh.vertices = v; mesh.normals = n; mesh.uv = uv; mesh.triangles = tri;
                     MatInfo pmi;
-                    if (mats.TryGetValue(part.mat, out pmi)) BakeSway(mesh, v, tri, pmi.mode == 1, part.cat == "Forest" && part.mat == "Spruce");
+                    if (mats.TryGetValue(part.mat, out pmi)) BakeSway(mesh, v, tri, pmi.mode == 1, part.cat == "Forest");
                     mesh.RecalculateBounds();
                     part.mesh = mesh; parts.Add(part);
                 }
@@ -214,7 +214,8 @@ namespace ChinaFishing
                 case "GrassTuft": amp = 0.10f; speed = 1.9f; break;
                 case "Cattail": amp = 0.20f; speed = 1.2f; break;
                 case "Reed": amp = 0.22f; speed = 1.1f; break;
-                case "Spruce": amp = 0.35f; speed = 0.8f; break;   // деревья: медленнее и мягче
+                case "Spruce": amp = 0.9f; speed = 0.75f; break;    // деревья: медленнее, но размах заметный
+                case "DarkWood": amp = 0.9f; speed = 0.75f; break;  // стволы качаются вместе с кронами (в карте DarkWood — только в лесу)
                 default: amp = 0f; speed = 1f; break;
             }
         }
@@ -233,9 +234,9 @@ namespace ChinaFishing
                 // трава, камыши, кувшинки: свой шейдер с вырезом по альфе (Alpha Cutoff 0.4), двусторонность заложена в меш
                 m = Mats.Foliage(tex, Color.white, 0.4f, amp, speed);
             }
-            else if (name == "Spruce")
+            else if (name == "Spruce" || name == "DarkWood")
             {
-                m = Mats.Foliage(null, new Color(mi.color.r, mi.color.g, mi.color.b, 1f), 0.0f, amp, speed);
+                m = Mats.Foliage(null, new Color(mi.color.r, mi.color.g, mi.color.b, 1f), 0.0f, amp, speed, name == "Spruce" ? 0.05f : 0f);
             }
             else if (name == "Window_glass")
             {
@@ -257,7 +258,9 @@ namespace ChinaFishing
                     Mats.Col(m, "_Color", Color.white); Mats.Col(m, "_BaseColor", Color.white);
                 }
                 // земля, камни, доски, гравий мокнут под дождём
-                if (name == "Rock" || name == "Gravel" || name == "Planks") Atmosphere.RegisterWet(m);
+                if (name == "Rock" || name == "Gravel" || name == "Planks" || name == "Aged_pine_planks" || name == "Faded_blue" || name == "Fishing_blue_paint" ||
+                    name == "Weathered_dark_timber" || name == "Shadow_wood" || name == "Crate_wood" || name == "Fish_shack_gable_blue_wood" || name == "Warm_cream")
+                    Atmosphere.RegisterWet(m);   // земля, камни, доски и стены домов мокнут под дождём
             }
             m.name = name;
             matCache[name] = m;
