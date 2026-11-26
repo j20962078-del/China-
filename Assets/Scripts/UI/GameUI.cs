@@ -258,22 +258,45 @@ namespace ChinaFishing
         void BuildMenu()
         {
             menuR = Full("Главное меню");
-            var shade = UIKit.R("Затемнение", menuR); UIKit.Stretch(shade);
-            var si = shade.gameObject.AddComponent<Image>(); si.color = new Color(0, 0.05f, 0.1f, 0.35f);
-            var strip = UIKit.Img(menuR, new Color(0.03f, 0.1f, 0.14f, 0.78f), false); strip.rectTransform.anchorMin = new Vector2(0, 0); strip.rectTransform.anchorMax = new Vector2(0.42f, 1); strip.rectTransform.offsetMin = strip.rectTransform.offsetMax = Vector2.zero;
-            Label(menuR, "China Fishing", 96, new Vector2(0, 1), new Vector2(70, -70), new Vector2(760, 120), TextAnchor.MiddleLeft, Color.white, FontStyle.Bold);
-            Label(menuR, "Рыбалка у деревенского озера", 34, new Vector2(0, 1), new Vector2(76, -190), new Vector2(760, 50), TextAnchor.MiddleLeft, UIKit.Dim);
-            string[] names = { "Играть", "Магазин", "Инвентарь", "Коллекция", "Карта", "Настройки" };
-            Color[] cols = { UIKit.Green, UIKit.Accent, UIKit.Blue, UIKit.Blue, UIKit.Blue, UIKit.Gray };
-            System.Action[] acts = {
-                () => GameManager.I.Play(),
-                () => Open(shopR, false), () => Open(invR, false), () => Open(colR, false), () => Open(mapR, false), () => Open(setR, false) };
-            for (int i = 0; i < names.Length; i++)
+            // Фон — фотография озера на весь экран (включая вырез под камеру), а не только безопасную область
+            var bgTex = LoadMenuBg();
+            if (bgTex != null)
             {
-                var act = acts[i];
-                B(menuR, names[i], cols[i], new Vector2(0, 1), new Vector2(70, -290 - i * 112), new Vector2(620, 98), () => act(), i == 0 ? 50 : 42);
+                var bg = UIKit.R("Фон меню", canvas.transform); UIKit.Stretch(bg); bg.SetSiblingIndex(0);
+                var ri = bg.gameObject.AddComponent<RawImage>(); ri.texture = bgTex; ri.raycastTarget = false;
+                // картинку обрезаем по центру под пропорции экрана, чтобы не растягивалась
+                float sa = Screen.height > 0 ? (float)Screen.width / Screen.height : 2f, ia = (float)bgTex.width / bgTex.height;
+                if (sa > ia) { float f = ia / sa; ri.uvRect = new Rect(0f, (1f - f) * 0.5f, 1f, f); }
+                else { float f = sa / ia; ri.uvRect = new Rect((1f - f) * 0.5f, 0f, f, 1f); }
+                menuR.gameObject.AddComponent<MenuBgLink>().bg = bg.gameObject;   // фон показывается и прячется вместе с меню
             }
-            menuMoney = Label(menuR, "", 34, new Vector2(0, 0), new Vector2(76, 40), new Vector2(760, 50), TextAnchor.MiddleLeft, UIKit.Accent, FontStyle.Bold);
+            var shade = UIKit.R("Затемнение", menuR); UIKit.Stretch(shade);
+            var si = shade.gameObject.AddComponent<Image>(); si.color = new Color(0, 0.05f, 0.1f, bgTex != null ? 0.12f : 0.35f); si.raycastTarget = false;
+            var mid = new Vector2(0.5f, 0.5f);
+            Label(menuR, "China Fishing", 112, mid, new Vector2(0, 210), new Vector2(1400, 140), TextAnchor.MiddleCenter, Color.white, FontStyle.Bold);
+            Label(menuR, "Рыбалка у деревенского озера", 40, mid, new Vector2(0, 110), new Vector2(1200, 60), TextAnchor.MiddleCenter, Color.white);
+            B(menuR, "Играть", UIKit.Green, mid, new Vector2(0, -50), new Vector2(720, 130), () => GameManager.I.Play(), 62);
+            menuMoney = Label(menuR, "", 36, new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(1000, 50), TextAnchor.MiddleCenter, UIKit.Accent, FontStyle.Bold);
+        }
+
+        static Texture2D menuBgTex;
+        static Texture2D LoadMenuBg()
+        {
+            if (menuBgTex != null) return menuBgTex;
+            var ta = Resources.Load<TextAsset>("UI/menu_bg");
+            if (ta == null) return null;
+            var t = new Texture2D(2, 2, TextureFormat.RGB24, false);
+            if (!t.LoadImage(ta.bytes, true)) return null;
+            t.wrapMode = TextureWrapMode.Clamp; t.filterMode = FilterMode.Bilinear;
+            menuBgTex = t; return t;
+        }
+
+        // Показывает/прячет фон главного меню вместе с самим меню
+        class MenuBgLink : MonoBehaviour
+        {
+            public GameObject bg;
+            void OnEnable() { if (bg != null) bg.SetActive(true); }
+            void OnDisable() { if (bg != null) bg.SetActive(false); }
         }
 
         // ---------------- ОБЩИЕ ПАНЕЛИ ----------------
