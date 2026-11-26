@@ -16,10 +16,11 @@ namespace ChinaFishing
     public class WorldBuilder : MonoBehaviour
     {
         public const float Size = 320f, MinY = -14f, HeightRange = 24f;
-        public static float WaterLevel { get { return AmurMap.Data != null ? AmurMap.WaterY : 0f; } }
+        public static float WaterLevel { get { return KamMap.Data != null ? KamMap.WaterY : AmurMap.Data != null ? AmurMap.WaterY : 0f; } }
+        public KamMap kam;                        // не null — мир построен по карте «Камышевское озеро»
         public AmurMap amur;                      // не null — мир построен по карте Амура
-        public string MapId { get { return amur != null ? AmurMap.Id : "lake"; } }
-        public bool HasGround { get { return terrain != null || amur != null; } }
+        public string MapId { get { return kam != null ? KamMap.Id : amur != null ? AmurMap.Id : "lake"; } }
+        public bool HasGround { get { return terrain != null || amur != null || kam != null; } }
         // Камера главного меню облетает это место
         public Vector3 menuCenter = new Vector3(0, 0, 45f), menuLook = new Vector3(0, -1.5f, 40f);
         public Vector2 menuRadius = new Vector2(92f, 62f);
@@ -28,6 +29,7 @@ namespace ChinaFishing
         // Границы игрового мира
         public static bool Inside(float x, float z, float margin = 0f)
         {
+            if (KamMap.Data != null) return KamMap.Data.Inside(x, z, 3f + margin);
             if (AmurMap.Data != null) return AmurMap.Inside(x, z, 3f + margin);
             return Mathf.Abs(x) < 145f - margin && Mathf.Abs(z) < 145f - margin;
         }
@@ -37,6 +39,7 @@ namespace ChinaFishing
         {
             get
             {
+                if (KamMap.Data != null) { var k = KamMap.Data; return new Vector4(k.minX + 3.01f, k.maxX - 3.01f, k.minZ + 3.01f, k.maxZ - 3.01f); }
                 if (AmurMap.Data != null) { float x = AmurMap.HalfW - 3.01f, z = AmurMap.HalfH - 3.01f; return new Vector4(-x, x, -z, z); }
                 return new Vector4(-145f, 145f, -145f, 145f);
             }
@@ -67,6 +70,7 @@ namespace ChinaFishing
 
         public static float H(float x, float z)
         {
+            if (KamMap.Data != null) return KamMap.Data.GameDepth(x, z);
             if (AmurMap.Data != null) return AmurMap.Data.GameDepth(x, z);
             float d = Mathf.Sqrt((x / 95f) * (x / 95f) + ((z - 45f) / 62f) * ((z - 45f) / 62f));
             d += (Mathf.PerlinNoise(x * 0.03f + 100f, z * 0.03f) - 0.5f) * 0.22f;
@@ -93,6 +97,7 @@ namespace ChinaFishing
 
         public float Ground(float x, float z)
         {
+            if (kam != null) return kam.Height(x, z);
             if (amur != null) return amur.Height(x, z);
             return terrain.SampleHeight(new Vector3(x, 0, z)) + terrain.transform.position.y;
         }
@@ -128,6 +133,16 @@ namespace ChinaFishing
             Random.InitState(20260921);
             root = new GameObject("Мир").transform;
             var env = new GameObject("Окружение").transform; env.SetParent(root, false);
+
+            kam = KamMap.Load();
+            KamMap.Data = kam;
+            if (kam != null)
+            {
+                AmurMap.Data = null;
+                BuildSky();
+                BuildKamWorld(env);
+                return;
+            }
 
             amur = AmurMap.Load();
             AmurMap.Data = amur;
@@ -263,9 +278,9 @@ namespace ChinaFishing
             var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
             g.name = "Вода";
             g.transform.SetParent(root, false);
-            g.transform.position = new Vector3(0, WaterLevel, 0);
-            g.transform.localScale = amur != null ? new Vector3(AmurMap.HalfW * 2f / 10f, 1f, AmurMap.HalfH * 2f / 10f) : new Vector3(Size / 10f, 1f, Size / 10f);
-            Vector2 tile = amur != null ? new Vector2(60f * AmurMap.HalfW * 2f / Size, 60f * AmurMap.HalfH * 2f / Size) : new Vector2(60, 60);
+            g.transform.position = kam != null ? new Vector3((KamMap.WaterMinX + KamMap.WaterMaxX) * 0.5f, WaterLevel, (KamMap.WaterMinZ + KamMap.WaterMaxZ) * 0.5f) : new Vector3(0, WaterLevel, 0);
+            g.transform.localScale = kam != null ? new Vector3((KamMap.WaterMaxX - KamMap.WaterMinX) / 10f, 1f, (KamMap.WaterMaxZ - KamMap.WaterMinZ) / 10f) : amur != null ? new Vector3(AmurMap.HalfW * 2f / 10f, 1f, AmurMap.HalfH * 2f / 10f) : new Vector3(Size / 10f, 1f, Size / 10f);
+            Vector2 tile = kam != null ? new Vector2(12f, 12f) : amur != null ? new Vector2(60f * AmurMap.HalfW * 2f / Size, 60f * AmurMap.HalfH * 2f / Size) : new Vector2(60, 60);
             Object.Destroy(g.GetComponent<Collider>());
             waterNormal = Mats.WaterNormal();
             waterMat = Resources.Load<Material>("Mat_Water");
@@ -282,7 +297,7 @@ namespace ChinaFishing
                 waterMat.EnableKeyword("_NORMALMAP");
                 waterMat.renderQueue = 3000;
             }
-            var col = new Color(0.10f, 0.32f, 0.36f, 0.78f);
+            var col = kam != null ? kam.waterColor : new Color(0.10f, 0.32f, 0.36f, 0.78f);   // у Камышевского озера цвет воды берётся из модели
             Mats.Col(waterMat, "_Color", col); Mats.Col(waterMat, "_BaseColor", col);
             Mats.Flt(waterMat, "_Glossiness", 0.95f); Mats.Flt(waterMat, "_Smoothness", 0.95f);
             Mats.Flt(waterMat, "_Metallic", 0f);
@@ -829,6 +844,80 @@ namespace ChinaFishing
             DefineSpotsAmur();
         }
 
+        // ---------------- КАРТА «КАМЫШЕВСКОЕ ОЗЕРО» ----------------
+        void BuildKamWorld(Transform env)
+        {
+            var k = kam;
+            var scene = new GameObject("Камышевское-озеро"); scene.transform.SetParent(env, false);
+            foreach (var part in k.parts)
+            {
+                if (part.cat == "Water") continue;   // воду рисует BuildWater: плоскость того же размера и цвета, что в модели
+                var go = new GameObject(part.cat + "-" + part.mat); go.transform.SetParent(scene.transform, false);
+                go.AddComponent<MeshFilter>().sharedMesh = part.mesh;
+                var mr = go.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = k.GetMaterial(part.mat);
+                bool light = part.cat == "Ground" || part.cat == "ShoreRocks" || part.cat == "Road" || part.cat == "GrassTufts" ||
+                             part.cat == "Reeds" || part.cat == "LilyPads" || part.cat == "Forest";
+                if (light) mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                // мостки и дома твёрдые; у мостков нет GroundMarker — иначе игра сочтёт их дном и не пустит на воду
+                if (part.cat == "Dock" || part.cat == "Village") go.AddComponent<MeshCollider>().sharedMesh = part.mesh;
+            }
+            // земля: коллайдер по сетке высот (каждая вторая точка), метка земли нужна для проверок дна
+            var gc = new GameObject("Земля-коллайдер"); gc.transform.SetParent(scene.transform, false);
+            gc.AddComponent<MeshCollider>().sharedMesh = k.BuildGroundCollider();
+            gc.AddComponent<GroundMarker>();
+
+            // окрестности за краем земли: плоские полосы, чтобы за краем карты не было пустоты
+            var sk = new GameObject("Окрестности"); sk.transform.SetParent(root, false);
+            var skMat = Mats.Lit(new Color(0.20f, 0.26f, 0.15f), 0.02f);
+            const float R = 900f, SY = 0.35f;
+            AddSkirt(sk.transform, skMat, -R, -R, k.minX, R, SY);
+            AddSkirt(sk.transform, skMat, k.maxX, -R, R, R, SY);
+            AddSkirt(sk.transform, skMat, k.minX, -R, k.maxX, k.minZ, SY);
+            AddSkirt(sk.transform, skMat, k.minX, k.maxZ, k.maxX, R, SY);
+
+            BuildWater();
+            DefineSpotsKam();
+        }
+
+        void AddSkirt(Transform parent, Material mat, float x0, float z0, float x1, float z1, float y)
+        {
+            var m = new Mesh(); m.name = "Полоса";
+            m.vertices = new[] { new Vector3(x0, y, z0), new Vector3(x0, y, z1), new Vector3(x1, y, z1), new Vector3(x1, y, z0) };
+            m.normals = new[] { Vector3.up, Vector3.up, Vector3.up, Vector3.up };
+            m.uv = new[] { new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 1), new Vector2(1, 0) };
+            m.triangles = new[] { 0, 1, 2, 0, 2, 3 };
+            var go = new GameObject("Полоса"); go.transform.SetParent(parent, false);
+            go.AddComponent<MeshFilter>().sharedMesh = m;
+            var mr = go.AddComponent<MeshRenderer>(); mr.sharedMaterial = mat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        void DefineSpotsKam()
+        {
+            var k = kam;
+            // мостки из модели
+            spots.Add(new FishingSpot { name = "Мостки", pos = new Vector3(-60f, k.Height(-60f, 6f) + 0.55f, 6f), yaw = 180f });
+            // берег озера: по линии Z от деревни к воде ищем первую клетку воды, встаём чуть на берегу
+            float[] xs = { -125f, -108f, -90f, -72f, -40f, -22f, -8f };
+            int n = 0;
+            foreach (float x in xs)
+            {
+                float edgeZ = float.NaN;
+                for (float z = 14f; z > -30f; z -= 0.5f)
+                    if (k.Height(x, z) < WaterLevel - 0.05f) { edgeZ = z; break; }
+                if (float.IsNaN(edgeZ)) continue;
+                float pz = edgeZ + 1.5f;
+                n++;
+                spots.Add(new FishingSpot { name = "Берег " + n, pos = new Vector3(x, k.Height(x, pz) + 0.05f, pz), yaw = 180f });
+            }
+            spots.Add(new FishingSpot { name = "Деревня", pos = new Vector3(-50f, k.Height(-50f, 26f) + 0.05f, 26f), yaw = 0f, fishing = false });
+
+            spawn = KamMap.SpawnPoint + Vector3.up * 0.25f;
+            menuCenter = new Vector3(-60f, WaterLevel, 4f); menuLook = new Vector3(-60f, WaterLevel, 8f);
+            menuRadius = new Vector2(48f, 22f); menuMinY = 7f; menuHeight = 7f;
+        }
+
         class WaterBody { public int area; public double sx, sz; public List<int> cells = new List<int>(); }
 
         void DefineSpotsAmur()
@@ -961,17 +1050,20 @@ namespace ChinaFishing
         }
 
         // ---------------- КАРТА ----------------
-        public float MapAspect { get { return amur != null ? AmurMap.HalfW / AmurMap.HalfH : 1f; } }
+        public float MapAspect { get { if (kam != null) return kam.photo != null ? (float)kam.photo.width / kam.photo.height : 1f; return amur != null ? AmurMap.HalfW / AmurMap.HalfH : 1f; } }
 
         // Точка мира → положение на карте (0…1 по обеим осям)
         public Vector2 MapUv(Vector3 w)
         {
+            if (kam != null)
+                return new Vector2(Mathf.Clamp01((w.x - KamMap.PhotoX0) / (KamMap.PhotoX1 - KamMap.PhotoX0)), Mathf.Clamp01((KamMap.PhotoZ1 - w.z) / (KamMap.PhotoZ1 - KamMap.PhotoZ0)));   // на фото вправо = уменьшение X, вниз = рост Z
             if (amur != null) return new Vector2((w.x + AmurMap.HalfW) / (2f * AmurMap.HalfW), (w.z + AmurMap.HalfH) / (2f * AmurMap.HalfH));
             return new Vector2(w.x / Size + 0.5f, w.z / Size + 0.5f);
         }
 
         public Texture2D MakeMap(int res)
         {
+            if (kam != null && kam.photo != null) return kam.photo;   // фото карты «Камышевское озеро»
             if (amur != null && amur.plan != null) return amur.plan;   // план карты из архива Амура
             var tex = new Texture2D(res, res, TextureFormat.RGB24, false);
             for (int y = 0; y < res; y++)
