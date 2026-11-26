@@ -7,16 +7,17 @@ namespace ChinaFishing
     // Карта «Камышевское озеро»: сцена из Prisma 3D (дома, мостки, камыши, кувшинки, лес, камни, трава, дорога, вода).
     // Данные лежат в Assets/Resources/Kamyshevskoe: kam_scene.bytes (меши по материалам), kam_height.bytes (сетка высот 171×171
     // из меша «Ground»), PNG-текстуры сцены (*.bytes) и map_photo.bytes (фото для окна «Карта»).
-    // Координаты сцены совпадают с игровыми: X вправо, Y вверх, Z вперёд. Вода — плоскость на высоте 0.
+    // Сцена отзеркалена по X относительно Prisma (иначе надписи на вывесках читаются задом наперёд). Вода — плоскость на высоте 0.
+    // Мостки в модели обрезаны (пара досок и балка), поэтому в сцену они не попадают — их строит WorldBuilder.BuildKamPier.
     public class KamMap
     {
         public const string Id = "kamyshevskoe";
         public const float WaterY = 0f;
         public const float DepthScale = 3f;                       // дно озера всего до 3 м — растягиваем игровую глубину
-        public const float WaterMinX = -143f, WaterMaxX = 26f, WaterMinZ = -42f, WaterMaxZ = 108f;
+        public const float WaterMinX = -26f, WaterMaxX = 143f, WaterMinZ = -42f, WaterMaxZ = 108f;
         // Какой кусок мира показывает фото на кнопке «Карта» (подогнано по подписям домов на фото)
-        public const float PhotoX0 = 0.75f, PhotoX1 = -118.9f, PhotoZ0 = 0.2f, PhotoZ1 = 88.2f;
-        public static readonly Vector3 SpawnPoint = new Vector3(-4f, 0.71f, 21f);
+        public const float PhotoX0 = -0.75f, PhotoX1 = 118.9f, PhotoZ0 = 0.2f, PhotoZ1 = 88.2f;
+        public static readonly Vector3 SpawnPoint = new Vector3(4f, 0.71f, 21f);
 
         public static KamMap Data;
 
@@ -139,6 +140,18 @@ namespace ChinaFishing
             return m;
         }
 
+        // Зелёная трава: та же текстура «Rock», но с зелёным оттенком (в модели земля зелёная)
+        public Material GetGroundMaterial()
+        {
+            Material m;
+            if (matCache.TryGetValue("_ground", out m)) return m;
+            m = new Material(GetMaterial("Rock")); m.name = "Земля-трава";
+            var c = new Color(0.58f, 0.88f, 0.42f, 1f);
+            Mats.Col(m, "_Color", c); Mats.Col(m, "_BaseColor", c);
+            matCache["_ground"] = m;
+            return m;
+        }
+
         // ---------------- МАТЕРИАЛЫ ----------------
         readonly Dictionary<string, Material> matCache = new Dictionary<string, Material>();
 
@@ -148,8 +161,12 @@ namespace ChinaFishing
             if (matCache.TryGetValue(name, out m)) return m;
             MatInfo mi;
             if (!mats.TryGetValue(name, out mi)) { m = Mats.Lit(new Color(0.5f, 0.5f, 0.5f), 0.1f); matCache[name] = m; return m; }
-            m = new Material(Mats.Lit(new Color(mi.color.r, mi.color.g, mi.color.b, 1f), Mathf.Clamp01(mi.gloss)));
+            Material baseMat = null;
+            if (mi.mode == 1) baseMat = Resources.Load<Material>("Mat_Cutout");   // шаблон с включённым вырезом по альфе (создаёт ProjectBuilder)
+            float gloss = mi.mode == 1 ? 0.05f : Mathf.Clamp01(mi.gloss);
+            m = baseMat != null ? new Material(baseMat) : new Material(Mats.Lit(new Color(mi.color.r, mi.color.g, mi.color.b, 1f), gloss));
             m.name = name;
+            Mats.Flt(m, "_Glossiness", gloss); Mats.Flt(m, "_Smoothness", gloss);
             if (!string.IsNullOrEmpty(mi.tex))
             {
                 var ta = Resources.Load<TextAsset>("Kamyshevskoe/" + mi.tex);
@@ -165,12 +182,15 @@ namespace ChinaFishing
                     }
                 }
             }
-            // у материалов сцены двусторонняя отрисовка (cullMode Off)
-            Mats.Flt(m, "_Cull", 0f);
             if (mi.mode == 1)
             {
-                Mats.Flt(m, "_AlphaClip", 1f); Mats.Flt(m, "_Cutoff", 0.5f);
+                // трава, камыши, кувшинки: прозрачные места текстуры вырезаются (двусторонность заложена в меш)
+                Mats.Flt(m, "_Mode", 1f); Mats.Flt(m, "_Cutoff", 0.5f);
+                Mats.Flt(m, "_SrcBlend", 1f); Mats.Flt(m, "_DstBlend", 0f); Mats.Flt(m, "_ZWrite", 1f);
+                m.SetOverrideTag("RenderType", "TransparentCutout");
                 m.EnableKeyword("_ALPHATEST_ON");
+                m.DisableKeyword("_ALPHABLEND_ON");
+                m.DisableKeyword("_ALPHAPREMULTIPLY_ON");
                 m.renderQueue = 2450;
             }
             matCache[name] = m;

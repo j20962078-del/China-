@@ -855,7 +855,7 @@ namespace ChinaFishing
                 var go = new GameObject(part.cat + "-" + part.mat); go.transform.SetParent(scene.transform, false);
                 go.AddComponent<MeshFilter>().sharedMesh = part.mesh;
                 var mr = go.AddComponent<MeshRenderer>();
-                mr.sharedMaterial = k.GetMaterial(part.mat);
+                mr.sharedMaterial = part.cat == "Ground" ? k.GetGroundMaterial() : k.GetMaterial(part.mat);
                 bool light = part.cat == "Ground" || part.cat == "ShoreRocks" || part.cat == "Road" || part.cat == "GrassTufts" ||
                              part.cat == "Reeds" || part.cat == "LilyPads" || part.cat == "Forest";
                 if (light) mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -876,6 +876,7 @@ namespace ChinaFishing
             AddSkirt(sk.transform, skMat, k.minX, -R, k.maxX, k.minZ, SY);
             AddSkirt(sk.transform, skMat, k.minX, k.maxZ, k.maxX, R, SY);
 
+            BuildKamPier(scene.transform);
             BuildWater();
             DefineSpotsKam();
         }
@@ -893,13 +894,71 @@ namespace ChinaFishing
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
+        // Мостки: доски, опоры до дна и перила. Идут от берега в воду в точке (PierX, ...); один невидимый коллайдер по палубе
+        const float PierX = 60f, PierW = 2.2f;
+        float pierEdgeZ, pierEndZ, pierDeckY;
+
+        float ShoreZ(float x)
+        {
+            for (float z = 14f; z > -30f; z -= 0.25f)
+                if (kam.Height(x, z) < WaterLevel - 0.05f) return z;
+            return -2f;
+        }
+
+        GameObject PierPart(Transform parent, Material mat, Vector3 pos, Vector3 size, string name)
+        {
+            var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            g.name = name; g.transform.SetParent(parent, false);
+            g.transform.localPosition = pos; g.transform.localScale = size;
+            Object.Destroy(g.GetComponent<Collider>());
+            var mr = g.GetComponent<MeshRenderer>(); mr.sharedMaterial = mat;
+            return g;
+        }
+
+        void BuildKamPier(Transform parent)
+        {
+            var k = kam;
+            var pier = new GameObject("Мостки"); pier.transform.SetParent(parent, false);
+            var plank = k.GetMaterial("Planks"); var post = k.GetMaterial("DarkWood");
+            pierEdgeZ = ShoreZ(PierX);
+            float zStart = pierEdgeZ + 4f, zEnd = pierEdgeZ - 15f;
+            pierEndZ = zEnd;
+            pierDeckY = WaterLevel + 0.5f;
+            float len = zStart - zEnd, midZ = (zStart + zEnd) * 0.5f;
+
+            for (float z = zStart; z > zEnd; z -= 0.42f)
+                PierPart(pier.transform, plank, new Vector3(PierX, pierDeckY, z), new Vector3(PierW, 0.07f, 0.38f), "Доска");
+            // две продольные балки под настилом
+            for (int side = -1; side <= 1; side += 2)
+                PierPart(pier.transform, post, new Vector3(PierX + side * (PierW * 0.5f - 0.2f), pierDeckY - 0.14f, midZ), new Vector3(0.14f, 0.16f, len), "Балка");
+            // опоры (до дна) и перила
+            for (float z = zStart - 0.5f; z > zEnd; z -= 3f)
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    float px = PierX + side * (PierW * 0.5f - 0.1f);
+                    float bed = Mathf.Min(k.Height(px, z), pierDeckY - 0.3f);
+                    float top = pierDeckY + 0.95f;
+                    PierPart(pier.transform, post, new Vector3(px, (bed + top) * 0.5f, z), new Vector3(0.16f, top - bed, 0.16f), "Опора");
+                }
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float px = PierX + side * (PierW * 0.5f - 0.1f);
+                PierPart(pier.transform, post, new Vector3(px, pierDeckY + 0.92f, midZ), new Vector3(0.09f, 0.09f, len), "Перила");
+                PierPart(pier.transform, post, new Vector3(px, pierDeckY + 0.5f, midZ), new Vector3(0.06f, 0.06f, len), "Перила");
+            }
+            // коллайдер палубы (без GroundMarker — игра считает мостки проходимыми над водой)
+            var col = new GameObject("Мостки-палуба"); col.transform.SetParent(pier.transform, false);
+            col.transform.localPosition = new Vector3(PierX, pierDeckY - 0.1f, midZ);
+            var bc = col.AddComponent<BoxCollider>(); bc.size = new Vector3(PierW, 0.2f, len);
+        }
+
         void DefineSpotsKam()
         {
             var k = kam;
             // мостки из модели
-            spots.Add(new FishingSpot { name = "Мостки", pos = new Vector3(-60f, k.Height(-60f, 6f) + 0.55f, 6f), yaw = 180f });
+            spots.Add(new FishingSpot { name = "Мостки", pos = new Vector3(PierX, pierDeckY + 0.12f, pierEndZ + 1.2f), yaw = 180f });
             // берег озера: по линии Z от деревни к воде ищем первую клетку воды, встаём чуть на берегу
-            float[] xs = { -125f, -108f, -90f, -72f, -40f, -22f, -8f };
+            float[] xs = { 8f, 22f, 40f, 78f, 92f, 108f, 125f };
             int n = 0;
             foreach (float x in xs)
             {
@@ -911,10 +970,10 @@ namespace ChinaFishing
                 n++;
                 spots.Add(new FishingSpot { name = "Берег " + n, pos = new Vector3(x, k.Height(x, pz) + 0.05f, pz), yaw = 180f });
             }
-            spots.Add(new FishingSpot { name = "Деревня", pos = new Vector3(-50f, k.Height(-50f, 26f) + 0.05f, 26f), yaw = 0f, fishing = false });
+            spots.Add(new FishingSpot { name = "Деревня", pos = new Vector3(50f, k.Height(50f, 26f) + 0.05f, 26f), yaw = 0f, fishing = false });
 
             spawn = KamMap.SpawnPoint + Vector3.up * 0.25f;
-            menuCenter = new Vector3(-60f, WaterLevel, 4f); menuLook = new Vector3(-60f, WaterLevel, 8f);
+            menuCenter = new Vector3(60f, WaterLevel, 4f); menuLook = new Vector3(60f, WaterLevel, 8f);
             menuRadius = new Vector2(48f, 22f); menuMinY = 7f; menuHeight = 7f;
         }
 
@@ -1056,7 +1115,7 @@ namespace ChinaFishing
         public Vector2 MapUv(Vector3 w)
         {
             if (kam != null)
-                return new Vector2(Mathf.Clamp01((w.x - KamMap.PhotoX0) / (KamMap.PhotoX1 - KamMap.PhotoX0)), Mathf.Clamp01((KamMap.PhotoZ1 - w.z) / (KamMap.PhotoZ1 - KamMap.PhotoZ0)));   // на фото вправо = уменьшение X, вниз = рост Z
+                return new Vector2(Mathf.Clamp01((w.x - KamMap.PhotoX0) / (KamMap.PhotoX1 - KamMap.PhotoX0)), Mathf.Clamp01((KamMap.PhotoZ1 - w.z) / (KamMap.PhotoZ1 - KamMap.PhotoZ0)));   // на фото вправо = рост X, вниз = рост Z
             if (amur != null) return new Vector2((w.x + AmurMap.HalfW) / (2f * AmurMap.HalfW), (w.z + AmurMap.HalfH) / (2f * AmurMap.HalfH));
             return new Vector2(w.x / Size + 0.5f, w.z / Size + 0.5f);
         }

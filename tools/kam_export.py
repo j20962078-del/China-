@@ -14,13 +14,15 @@ for n in nodes:
     if not r: continue
     m=meshes[json.loads(r['pMesh'])['id']]; mids=json.loads(r['materials'])['ids']
     cat=cat_of(n)
+    if cat=='Dock': continue          # мостки в модели обрезаны (пара досок и балка) — строим их в коде
     fm,fc,fn,idx,uv,V=m[1],m[2],m[3],m[4],m[5],m[8]
+    V=[[-p[0],p[1],p[2]] for p in V]   # зеркало по X: в Prisma ось X обратная, иначе вывески читаются задом наперёд
     if cat=='Ground': ground=np.array(V)
     c=0
     for f in range(len(fm)):
         k=fc[f]; mi=mids[min(fm[f],len(mids)-1)]
         g=groups.setdefault((cat,mi),dict(map={},pos=[],nrm=[],uv=[],idx=[]))
-        nn=fn[f]; nb=tuple(int(round(max(-1,min(1,x))*127)) for x in nn)
+        nn=fn[f]; nb=tuple(int(round(max(-1,min(1,x))*127)) for x in (-nn[0],nn[1],nn[2]))
         ids=[]
         for j in range(k):
             p=V[idx[c+j]]; t=uv[c+j]
@@ -30,7 +32,7 @@ for n in nodes:
                 i=len(g['pos']); g['map'][key]=i; g['pos'].append(p); g['nrm'].append(nb); g['uv'].append(t)
             ids.append(i)
         c+=k
-        for j in range(1,k-1): g['idx']+= [ids[0],ids[j],ids[j+1]]
+        for j in range(1,k-1): g['idx']+= [ids[0],ids[j+1],ids[j]]
 def s(b,x): 
     e=x.encode('utf-8'); b+=struct.pack('<H',len(e))+e
 mode={'Water':2,'GrassTuft':1,'Cattail':1,'Reed':1,'Lily':1,'LilyFlower':1}
@@ -46,6 +48,12 @@ b+=struct.pack('<i',len(groups))
 tv=0
 for (cat,mi),g in groups.items():
     s(b,cat); s(b,mats[mi]['name'])
+    if mode.get(mats[mi]['name'],0)==1:
+        n0=len(g['pos'])
+        g['pos']=g['pos']+g['pos']; g['uv']=g['uv']+g['uv']
+        g['nrm']=g['nrm']+[(-a,-b_,-c_) for a,b_,c_ in g['nrm']]
+        old=g['idx']
+        g['idx']=old+[old[i+t]+n0 for i in range(0,len(old),3) for t in (0,2,1)]
     nv=len(g['pos']); ni=len(g['idx']); tv+=nv
     b+=struct.pack('<ii',nv,ni)
     b+=np.array(g['pos'],dtype='<f4').tobytes()

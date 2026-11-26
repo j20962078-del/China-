@@ -67,6 +67,23 @@ namespace ChinaFishing.EditorTools
             var lit = MakeMat("Assets/Resources/Mat_Lit.mat", "Standard");
             if (lit != null) EditorUtility.SetDirty(lit);
 
+            // шаблон для травы, камышей и кувшинок: Standard в режиме Cutout. Лежит в Resources, поэтому нужный вариант шейдера попадает в сборку
+            var cut = MakeMat("Assets/Resources/Mat_Cutout.mat", "Standard");
+            if (cut != null)
+            {
+                cut.SetFloat("_Mode", 1f);
+                cut.SetFloat("_Cutoff", 0.5f);
+                cut.SetFloat("_SrcBlend", 1f);
+                cut.SetFloat("_DstBlend", 0f);
+                cut.SetFloat("_ZWrite", 1f);
+                cut.SetOverrideTag("RenderType", "TransparentCutout");
+                cut.EnableKeyword("_ALPHATEST_ON");
+                cut.DisableKeyword("_ALPHABLEND_ON");
+                cut.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                cut.renderQueue = (int)RenderQueue.AlphaTest;
+                EditorUtility.SetDirty(cut);
+            }
+
             var water = MakeMat("Assets/Resources/Mat_Water.mat", "Standard");
             if (water != null)
             {
