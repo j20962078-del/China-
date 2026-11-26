@@ -248,6 +248,12 @@ namespace ChinaFishing
             Rod("23_float_Flagman_Squadron_Pro_Match", ItemCategory.Поплавочные, "Flagman", "Squadron Pro Match", 4.2f, 12f, 18f, 1800, 3);
             Rod("24_float_Mikado_Ultraviolet_Match", ItemCategory.Поплавочные, "Mikado", "Ultraviolet Match", 4.0f, 13f, 20f, 2500, 4);
             Rod("25_float_Maver_Reality", ItemCategory.Поплавочные, "Maver", "Reality", 4.2f, 14f, 22f, 3400, 5);
+            // Телескопические поплавочные (модели из tools/gen_tele_float_rods.py): длина по описаниям магазинов, баланс — игровой
+            Rod("33_float_Mikado_Nihonto_Mini_Float", ItemCategory.Поплавочные, "Mikado", "Nihonto Mini Float", 3.6f, 6f, 12f, 600, 1);
+            Rod("35_float_DAM_Sensomax_Tele", ItemCategory.Поплавочные, "DAM", "Sensomax Tele", 4.0f, 7f, 10f, 700, 1);
+            Rod("32_float_Mikado_Intro_II_Tele_Float", ItemCategory.Поплавочные, "Mikado", "Intro II Tele Float", 3.6f, 9f, 14f, 900, 2);
+            Rod("31_float_Mikado_Sasori_Tele_Float", ItemCategory.Поплавочные, "Mikado", "Sasori Tele Float", 4.0f, 9f, 15f, 1000, 2);
+            Rod("34_float_Daiwa_Aqualite_Tele_Whip", ItemCategory.Поплавочные, "Daiwa", "Aqualite Tele Whip", 5.0f, 6f, 8f, 1100, 2);
 
             Rod("26_marker_Fox_Horizon_X3_Marker", ItemCategory.Маркерные, "Fox", "Horizon X3 Marker", 3.6f, 30f, 26f, 3000, 5);
             Rod("27_marker_Daiwa_Black_Widow_Marker", ItemCategory.Маркерные, "Daiwa", "Black Widow Marker", 3.6f, 34f, 28f, 4200, 6);
