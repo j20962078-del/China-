@@ -86,6 +86,7 @@ namespace ChinaFishing
             rig.enabled = false;
             Ready = true;
             ToMenu(true);
+            AccountUI.Create();   // вход в аккаунт и профиль (этап 1 онлайна)
         }
 
         // Сохранённая позиция годится, только если под ногами твёрдая земля, не глубокая вода и нет коллизии
@@ -167,7 +168,8 @@ namespace ChinaFishing
             // кнопка «Назад» на Android
             if (Input.GetKeyDown(KeyCode.Escape))
             {
-                if (ui != null && ui.HasPanel) ui.Back();
+                if (AccountUI.I != null && AccountUI.I.HandleBack()) { }
+                else if (ui != null && ui.HasPanel) ui.Back();
                 else if (fishing != null && fishing.state == FState.Итог) { }
                 else if (!InMenu) ToMenu();
                 else Application.Quit();
