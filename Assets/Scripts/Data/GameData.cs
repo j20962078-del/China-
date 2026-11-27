@@ -40,6 +40,10 @@ namespace ChinaFishing
         public string model;    // имя 3D-модели в Resources/Rods (для удилищ); null — модели нет
         public float length;    // длина удилища, м
         public string family;   // семейство: рыба, любящая id семейства, клюёт и на этот товар (например «worm»)
+        public int priceGold;   // цена в золоте (0 — только за серебро)
+        public int salePrice = -1; // цена в серебре по акции; -1 — акции нет (показывается бейдж SALE)
+        public bool special;    // особый набор: золотая рамка в магазине
+        public bool OnSale { get { return salePrice >= 0; } }
     }
 
     // Навык: каждые perStep успехов даёт +0,3%
@@ -431,7 +435,32 @@ namespace ChinaFishing
             // ---------- ПРОЧЕЕ ----------
             I("misc_net", "Подсак", ItemCategory.Прочее, 700, 1.15f, 0f, "Реже срывается на подходе", "Помогает вытащить крупную рыбу.", C(100, 160, 100), false, 1, 3);
             I("misc_groundbait", "Прикормка универсальная", ItemCategory.Прикормки, 80, 1.3f, 0f, "Поклёвки чаще и быстрее на 5 забросов", "Включается сама при забросе, пока есть в запасе.", C(150, 120, 80), true, 5, sub: "Универсальная");
+            ApplyShopOffers();
         }
+
+        // Акции и особые наборы витрины. Меняйте здесь: id товара, цена по акции, цена в золоте, золотая рамка.
+        static void ApplyShopOffers()
+        {
+            int k = 0;
+            foreach (var it in Items)
+            {
+                if (!IsRod(it.cat) || it.price < 3000) continue;
+                k++;
+                if (k % 4 == 0) it.salePrice = Mathf.RoundToInt(it.price * 0.8f / 10f) * 10;                          // каждое четвёртое дорогое удилище: скидка 20%
+                else if (k % 4 == 2 && it.price >= 5000) { it.priceGold = Mathf.Max(5, it.price / 600); it.special = true; } // «золотой» набор: серебро + золото
+            }
+        }
+
+        static void Offer(string id, int gold, int sale, bool special)
+        {
+            ItemDef d; if (!itemMap.TryGetValue(id, out d)) return;
+            if (gold > 0) d.priceGold = gold;
+            if (sale >= 0) d.salePrice = sale;
+            if (special) d.special = true;
+        }
+
+        // Цена в серебре с учётом акции
+        public static int PriceSilver(ItemDef d) { return d.OnSale ? d.salePrice : d.price; }
 
 
         // ---------------- СЕКЦИИ МАГАЗИНА (порядок заголовков) ----------------

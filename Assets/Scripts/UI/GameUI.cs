@@ -52,6 +52,7 @@ namespace ChinaFishing
             root = safe; ApplySafeArea();
 
             BuildHud(); BuildMenu(); BuildShop(); BuildInventory(); BuildCollection(); BuildMap(); BuildSettings(); BuildResult(); BuildTutorial();
+            UIManager.Create(this);   // окна зданий: Магазин, Рынок, Кафе
             HideAllPanels();
             Game.Changed += Refresh;
             var f = FishingController.I;
@@ -66,7 +67,27 @@ namespace ChinaFishing
             if (I == this) I = null;
         }
 
-        public bool HasPanel { get { return currentPanel != null; } }
+        public bool HasPanel { get { return currentPanel != null || (UIManager.I != null && UIManager.I.IsOpen); } }
+
+        public RectTransform SafeRoot { get { return safe; } }
+        public RectTransform HudRoot { get { return hudR; } }
+
+        // Окна зданий (UIManager) открываются поверх игры: прячем HUD, ставим паузу и блокируем управление
+        public void BeginExternal()
+        {
+            HideAllPanels();
+            if (hudR != null) hudR.gameObject.SetActive(false);
+            hudVisible = false;
+            Time.timeScale = 0f;
+            Inp.UiBlocking = true; Inp.Move = Vector2.zero; Inp.LookDelta = Vector2.zero;
+        }
+
+        public void EndExternal()
+        {
+            Time.timeScale = 1f;
+            FishPreview.SetAllActive(false);
+            ShowHud();
+        }
 
         void ApplySafeArea()
         {
@@ -212,13 +233,13 @@ namespace ChinaFishing
         {
             if (hudMoney == null) return;
             var S = Game.S;
-            hudMoney.text = "Монеты: " + S.money;
+            hudMoney.text = "Сер. " + S.money + "   Зол. " + S.gold;
             hudLevel.text = "Уровень " + S.level + "   Опыт " + S.xp + "/" + GameData.XpForLevel(S.level);
             xpFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(S.xp / (float)GameData.XpForLevel(S.level)), 1);
             var b = GameData.GetItem(S.bait);
             if (b != null) hudBait.text = (b.cat == ItemCategory.Приманки ? "Приманка: " : "Наживка: ") + b.name + (b.consumable ? "  ×" + Game.Count(b.id) : "");
             if (b != null && Game.S.groundbaitLeft > 0) hudBait.text += "  · прикормка: " + Game.S.groundbaitLeft;
-            if (menuMoney != null) menuMoney.text = "Монеты: " + S.money + "    Уровень " + S.level;
+            if (menuMoney != null) menuMoney.text = "Серебро: " + S.money + "    Золото: " + S.gold + "    Уровень " + S.level;
         }
 
         void CycleBait()
@@ -329,6 +350,7 @@ namespace ChinaFishing
 
         public void Back()
         {
+            if (UIManager.I != null && UIManager.I.IsOpen) { UIManager.I.Close(); return; }
             if (currentPanel == null) return;
             if (currentPanel == shopR && shopDlg != null && shopDlg.gameObject.activeSelf) { shopDlg.gameObject.SetActive(false); return; }
             if (currentPanel == setR) Game.Save();
@@ -912,7 +934,7 @@ namespace ChinaFishing
         }
 
         // ---------------- ДОБЫЧА ----------------
-        Text resTitle, resInfo; RawImage resPreview; Button resSell, resRelease;
+        Text resTitle, resInfo; RawImage resPreview; Button resSell, resRelease, resKeep;
         void BuildResult()
         {
             resR = Full("Улов");
@@ -922,8 +944,9 @@ namespace ChinaFishing
             var pv = UIKit.R("Просмотр", box.transform); UIKit.At(pv, new Vector2(0.5f, 1), new Vector2(0, -110), new Vector2(560, 280)); pv.pivot = new Vector2(0.5f, 1);
             resPreview = pv.gameObject.AddComponent<RawImage>(); resPreview.raycastTarget = false;
             resInfo = Label(box.transform, "", 34, new Vector2(0.5f, 1), new Vector2(0, -400), new Vector2(940, 200), TextAnchor.UpperCenter); resInfo.rectTransform.pivot = new Vector2(0.5f, 1);
-            resSell = B(box.transform, "Продать", UIKit.Green, new Vector2(0, 0), new Vector2(40, 30), new Vector2(440, 110), () => { FishPreview.SetAllActive(false); resR.gameObject.SetActive(false); Inp.UiBlocking = false; FishingController.I.SellCatch(); }, 36);
-            resRelease = B(box.transform, "Отпустить", UIKit.Blue, new Vector2(1, 0), new Vector2(-40, 30), new Vector2(440, 110), () => { FishPreview.SetAllActive(false); resR.gameObject.SetActive(false); Inp.UiBlocking = false; FishingController.I.ReleaseCatch(); }, 36);
+            resSell = B(box.transform, "Продать", UIKit.Green, new Vector2(0, 0), new Vector2(30, 30), new Vector2(290, 110), () => { FishPreview.SetAllActive(false); resR.gameObject.SetActive(false); Inp.UiBlocking = false; FishingController.I.SellCatch(); }, 32);
+            resKeep = B(box.transform, "В садок", UIKit.Accent, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(290, 110), () => { FishPreview.SetAllActive(false); resR.gameObject.SetActive(false); Inp.UiBlocking = false; FishingController.I.KeepCatch(); }, 32);
+            resRelease = B(box.transform, "Отпустить", UIKit.Blue, new Vector2(1, 0), new Vector2(-30, 30), new Vector2(290, 110), () => { FishPreview.SetAllActive(false); resR.gameObject.SetActive(false); Inp.UiBlocking = false; FishingController.I.ReleaseCatch(); }, 32);
         }
 
         void ShowResult(CatchResult r)
@@ -932,7 +955,7 @@ namespace ChinaFishing
             resTitle.text = r.firstTime ? "Новый вид: " + r.fish.name + "!" : "Поймана: " + r.fish.name + (r.record ? "  (рекорд!)" : "");
             resInfo.text = "Вес: " + r.weight.ToString("0.00") + " кг     Размер: " + r.length.ToString("0") + " см\nРедкость: " + r.fish.rarity +
                            "\nОпыт: +" + r.xp + (r.levelUp ? "     НОВЫЙ УРОВЕНЬ " + Game.S.level + "! Награда выдана" : "") +
-                           "\nЦена продажи: " + r.value + " монет";
+                           "\nЦена продажи: " + r.value + " серебра";
             resR.gameObject.SetActive(true); Inp.UiBlocking = true; Inp.Move = Vector2.zero;
             resR.SetAsLastSibling();
         }
@@ -950,7 +973,7 @@ namespace ChinaFishing
                        "• Выберите направление свайпом, удерживайте «Заброс» и отпустите в нужный момент.\n" +
                        "• Когда поплавок уйдёт под воду — сразу «ПОДСЕЧКА!».\n" +
                        "• Удерживайте «Тянуть», следите за шкалой лески (держите зелёную зону). Когда рыба тянет в сторону — отклоняйте джойстик в обратную.\n" +
-                       "• Улов можно продать или отпустить. На монеты покупайте снасти и наживки в магазине.";
+                       "• Улов можно продать или отпустить. На серебро покупайте снасти и наживки в Магазине, а рыбу из садка продавайте на Рынке или сдавайте в Кафе. Здания в деревне: подойдите и нажмите на маркер.";
             var tx = Label(box.transform, t, 34, new Vector2(0.5f, 1), new Vector2(0, -130), new Vector2(1200, 560), TextAnchor.UpperLeft); tx.rectTransform.pivot = new Vector2(0.5f, 1);
             B(box.transform, "Понятно, начать!", UIKit.Green, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(600, 110), () => { PlayerPrefs.SetInt("tut_done", 1); PlayerPrefs.Save(); tutR.gameObject.SetActive(false); Inp.UiBlocking = false; }, 42).GetComponent<RectTransform>().pivot = new Vector2(0.5f, 0);
         }

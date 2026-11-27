@@ -469,7 +469,7 @@ namespace ChinaFishing
             if (sell)
             {
                 Game.AddMoney(lastResult.value); Game.Save(); Game.Notify();
-                Msg("Рыба продана: +" + lastResult.value + " монет");
+                Msg("Рыба продана: +" + lastResult.value + " серебра");
             }
             else Msg("Вы отпустили рыбу. Она уплыла.");
             lastResult = null;
@@ -479,6 +479,21 @@ namespace ChinaFishing
         {
             if (state != FState.Итог) return;
             ResolveCatch(true); ClearHeldFish(); SetState(FState.Готов);
+        }
+
+        // Оставить рыбу в садке: потом её можно продать на рынке или сдать в кафе
+        public void KeepCatch()
+        {
+            if (state != FState.Итог) return;
+            if (lastResult != null && !resolved)
+            {
+                resolved = true;
+                if (Game.AddToBag(lastResult.fish.id, lastResult.weight)) Msg("Рыба в садке: " + lastResult.fish.name + ". Продайте её на рынке.");
+                else { Game.AddMoney(lastResult.value); Msg("Садок полон. Рыба продана: +" + lastResult.value + " серебра"); }
+                Game.Save(); Game.Notify();
+                lastResult = null;
+            }
+            ClearHeldFish(); SetState(FState.Готов);
         }
 
         public void ReleaseCatch()

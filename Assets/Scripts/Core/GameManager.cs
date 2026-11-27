@@ -82,6 +82,7 @@ namespace ChinaFishing
 
             ui = new GameObject("Интерфейс").AddComponent<GameUI>();
             ui.Build();
+            BuildingInteractor.SpawnAll(world);   // Магазин, Рынок и Кафе с маркерами
             rig.enabled = false;
             Ready = true;
             ToMenu(true);

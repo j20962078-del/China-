@@ -6,6 +6,8 @@ using UnityEngine;
 namespace ChinaFishing
 {
     [Serializable] public class InvEntry { public string id; public int count; }
+    [Serializable] public class BagFish { public string id; public float weight; }          // рыба в садке (ждёт продажи на рынке или заказа кафе)
+    [Serializable] public class CafeOrderSave { public string fishId; public int count; public float minWeight; public int price; public long expireTicks; }
     [Serializable] public class FishRecord { public string id; public int caught; public float maxWeight; public float maxLength; }
 
     [Serializable]
@@ -13,7 +15,10 @@ namespace ChinaFishing
     {
         public int magic = Game.Magic;       // признак целого файла сохранения
         public int version = Game.SaveVersion;
-        public int money = 300;
+        public int money = 300;     // серебро
+        public int gold = 20;       // золото
+        public List<BagFish> fishBag = new List<BagFish>();
+        public List<CafeOrderSave> cafeOrders = new List<CafeOrderSave>();
         public int level = 1;
         public int xp = 0;
         public float posX = 0, posY = 0, posZ = 0;
@@ -40,6 +45,7 @@ namespace ChinaFishing
     {
         public const int Magic = 20261122;
         public const int SaveVersion = 2;
+        public const int BagLimit = 120;     // сколько рыб помещается в садок
         public static SaveData S;
         public static bool LoadedFromBackup;
         public static event Action Changed;
@@ -121,6 +127,12 @@ namespace ChinaFishing
             if (s.owned == null) s.owned = new List<string>();
             if (s.collection == null) s.collection = new List<FishRecord>();
             s.money = Mathf.Max(0, s.money);
+            s.gold = Mathf.Max(0, s.gold);
+            if (s.fishBag == null) s.fishBag = new List<BagFish>();
+            s.fishBag.RemoveAll(bagItem => bagItem == null || GameData.GetFish(bagItem.id) == null || float.IsNaN(bagItem.weight) || bagItem.weight <= 0f);
+            if (s.fishBag.Count > Game.BagLimit) s.fishBag.RemoveRange(Game.BagLimit, s.fishBag.Count - Game.BagLimit);
+            if (s.cafeOrders == null) s.cafeOrders = new List<CafeOrderSave>();
+            s.cafeOrders.RemoveAll(ordItem => ordItem == null || GameData.GetFish(ordItem.fishId) == null || ordItem.count < 1);
             s.level = Mathf.Clamp(s.level, 1, 99);
             s.xp = Mathf.Max(0, s.xp);
             s.quality = Mathf.Clamp(s.quality, 0, 2);
@@ -269,10 +281,11 @@ namespace ChinaFishing
             if (d == null) return "Предмет не найден";
             if (S.level < d.minLevel) return "Нужен уровень " + d.minLevel;
             if (!d.consumable && Owns(d.id)) return "Уже куплено";
-            if (d.price < 0) return "Предмет недоступен";
-            if (S.money < d.price) return "Не хватает монет";
-            S.money -= d.price;
-            if (S.money < 0) S.money = 0;
+            int silver = GameData.PriceSilver(d), gold = d.priceGold;
+            if (silver < 0) return "Предмет недоступен";
+            if (S.money < silver) return "Не хватает серебра";
+            if (S.gold < gold) return "Не хватает золота";
+            if (!CurrencyManager.TrySpend(silver, gold)) return "Не хватает средств";
             if (d.consumable) AddItem(d.id, Mathf.Max(1, d.packSize));
             else { if (!S.owned.Contains(d.id)) S.owned.Add(d.id); Equip(d); }
             S.purchases++;
@@ -280,6 +293,14 @@ namespace ChinaFishing
             return null;
         }
 
+        // ---------------- САДОК ----------------
+        // false, если садок полон
+        public static bool AddToBag(string fishId, float weight)
+        {
+            if (GameData.GetFish(fishId) == null || S.fishBag.Count >= BagLimit) return false;
+            S.fishBag.Add(new BagFish { id = fishId, weight = weight });
+            return true;
+        }
 
         // Выбранная прикормка (если её нет в запасе — первая попавшаяся из имеющихся)
         public static ItemDef SelectedGroundbait()
