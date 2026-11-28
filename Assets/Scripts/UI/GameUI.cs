@@ -129,15 +129,17 @@ namespace ChinaFishing
             var ji = joyArea.gameObject.AddComponent<Image>(); ji.color = new Color(0, 0, 0, 0.002f);
             var jb = UIKit.Img(joyArea, new Color(1, 1, 1, 0.18f)); jb.rectTransform.sizeDelta = new Vector2(300, 300);
             jb.rectTransform.anchorMin = jb.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            var jk = UIKit.Img(jb.transform, new Color(1, 1, 1, 0.55f)); jk.rectTransform.sizeDelta = new Vector2(130, 130);
+            jb.sprite = HudRef.Circle; jb.type = Image.Type.Simple;
+            var jk = UIKit.Img(jb.transform, new Color(1, 1, 1, 0.55f)); jk.sprite = HudRef.Circle; jk.type = Image.Type.Simple; jk.rectTransform.sizeDelta = new Vector2(130, 130);
             jk.rectTransform.anchorMin = jk.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             joyArea.gameObject.AddComponent<VirtualJoystick>().Setup(joyArea, jb.rectTransform, jk.rectTransform);
             // подсказка где джойстик
             var jh = UIKit.Img(joyArea, new Color(1, 1, 1, 0.1f)); UIKit.At(jh.rectTransform, new Vector2(0, 0), new Vector2(120, 120), new Vector2(240, 240));
             jh.gameObject.name = "Подсказка джойстика";
+            jh.sprite = HudRef.Circle; jh.type = Image.Type.Simple;
 
             // верхняя панель
-            var top = UIKit.Img(hudR, new Color(0, 0, 0, 0.45f)); UIKit.At(top.rectTransform, new Vector2(0, 1), new Vector2(20, -20), new Vector2(520, 130));
+            var top = UIKit.Img(hudR, new Color(0, 0, 0, 0.45f)); UIKit.At(top.rectTransform, new Vector2(0, 1), new Vector2(280, -20), new Vector2(520, 130));
             hudMoney = Label(top.transform, "", 40, new Vector2(0, 1), new Vector2(24, -12), new Vector2(480, 56), TextAnchor.MiddleLeft, UIKit.Accent, FontStyle.Bold);
             hudLevel = Label(top.transform, "", 30, new Vector2(0, 1), new Vector2(24, -64), new Vector2(480, 40));
             var xpBg = UIKit.Img(top.transform, new Color(0, 0, 0, 0.5f)); UIKit.At(xpBg.rectTransform, new Vector2(0, 0), new Vector2(24, 14), new Vector2(472, 16));
@@ -203,6 +205,8 @@ namespace ChinaFishing
             biteBox = UIKit.R("Окно подсечки", hudR); UIKit.At(biteBox, new Vector2(0.5f, 0.5f), new Vector2(0, 120), new Vector2(520, 30));
             var bbg = UIKit.Img(biteBox, new Color(0, 0, 0, 0.55f)); UIKit.Stretch(bbg.rectTransform);
             biteFill = UIKit.Img(biteBox, UIKit.Red); biteFill.rectTransform.anchorMin = Vector2.zero; biteFill.rectTransform.anchorMax = Vector2.one; biteFill.rectTransform.offsetMin = biteFill.rectTransform.offsetMax = Vector2.zero;
+
+            HudRef.Build(hudR);   // миникарта, время/температура, сектор и чат (как на референсе)
         }
 
         void RefreshHud()
