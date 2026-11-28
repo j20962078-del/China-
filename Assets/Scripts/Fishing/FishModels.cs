@@ -9,22 +9,40 @@ namespace ChinaFishing
     // Если модели нет, FishModel.Build рисует прежнюю процедурную рыбу из примитивов.
     public static class FishModels
     {
-        class MtlEntry { public Color kd = new Color(0.5f, 0.5f, 0.5f); public float ns = 30f; public string map; }
+        class MtlEntry { public Color kd = new Color(0.5f, 0.5f, 0.5f); public float ns = 30f; public string map; public bool alpha; }
 
         static readonly Dictionary<string, Dictionary<string, MtlEntry>> mtlCache = new Dictionary<string, Dictionary<string, MtlEntry>>();
         static readonly Dictionary<string, Material> matCache = new Dictionary<string, Material>();
 
-        // id рыбы в игре → имя файла модели (сом в архиве назван wels)
-        public static string FileOf(string fishId) { return fishId == "catfish" ? "wels" : fishId; }
+        // id рыбы в игре → имя модели: Resources/Fish/<имя>/<имя>.obj (так названы папки пака)
+        public static string FileOf(string fishId)
+        {
+            switch (fishId)
+            {
+                case "catfish": return "som";
+                case "carp": return "sazan";
+                case "pike": return "schuka";
+                case "perch": return "okun";
+                case "zander": return "sudak";
+                case "sturgeon": return "osetr";
+                case "ruffe": return "ersh";
+                case "crucian": return "karas";
+                case "black_amur": return "chamur";
+                case "white_amur": return "bamur";
+                default: return fishId;   // beluga
+            }
+        }
 
-        public static bool Has(FishDef f) { return f != null && Resources.Load<GameObject>("Fish/" + FileOf(f.id)) != null; }
+        static string Path_(string file) { return "Fish/" + file + "/" + file; }
+
+        public static bool Has(FishDef f) { return f != null && Resources.Load<GameObject>(Path_(FileOf(f.id))) != null; }
 
         // Новая рыба: корень в нуле, центр тела в корне, полная длина (с хвостом) = lengthM. Null, если модели нет.
         public static GameObject Create(FishDef f, float lengthM)
         {
             if (f == null) return null;
             string file = FileOf(f.id);
-            var prefab = Resources.Load<GameObject>("Fish/" + file);
+            var prefab = Resources.Load<GameObject>(Path_(file));
             if (prefab == null) return null;
 
             var root = new GameObject("Рыба_" + f.name);
@@ -80,7 +98,14 @@ namespace ChinaFishing
             Material m;
             if (matCache.TryGetValue(key, out m) && m != null) return m;
             Texture2D tex = null;
-            if (!string.IsNullOrEmpty(e.map)) tex = Resources.Load<Texture2D>("Fish/" + System.IO.Path.GetFileNameWithoutExtension(e.map));
+            if (!string.IsNullOrEmpty(e.map)) tex = Resources.Load<Texture2D>("Fish/" + file + "/" + System.IO.Path.GetFileNameWithoutExtension(e.map));
+            if (tex != null && e.alpha)
+            {
+                // плавники — карточки с прозрачностью: вырез по альфе (шейдер травы, ветер выключен)
+                m = Mats.Foliage(tex, Color.white, 0.4f, 0f, 0f);
+                matCache[key] = m;
+                return m;
+            }
             float smooth = Mathf.Clamp(0.3f + e.ns / 400f, 0.2f, 0.7f);   // мокрая рыба блестит
             m = new Material(Mats.Lit(tex != null ? Color.white : e.kd, smooth));
             if (tex != null)
@@ -110,6 +135,7 @@ namespace ChinaFishing
                     if (p[0] == "Kd" && p.Length >= 4) cur.kd = new Color(F(p[1]), F(p[2]), F(p[3]));
                     else if (p[0] == "Ns" && p.Length >= 2) cur.ns = F(p[1]);
                     else if (p[0] == "map_Kd" && p.Length >= 2) cur.map = p[1].Trim();
+                    else if (p[0] == "map_d") cur.alpha = true;
                 }
             }
             mtlCache[file] = d;

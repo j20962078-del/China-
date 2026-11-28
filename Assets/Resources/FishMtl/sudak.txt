@@ -1,0 +1,42 @@
+newmtl sudak_body
+Ka 1 1 1
+Ks 0.25 0.25 0.25
+Ns 60
+Kd 1 1 1
+map_Kd sudak_body.png
+map_Bump sudak_body_normal.png
+
+newmtl sudak_fin_d
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 1 1 1
+map_Kd sudak_fin_d.png
+map_d sudak_fin_d.png
+
+newmtl sudak_fin_p
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 1 1 1
+map_Kd sudak_fin_p.png
+map_d sudak_fin_p.png
+
+newmtl sudak_skin
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 0.608 0.608 0.451
+
+newmtl sudak_eye
+Ka 1 1 1
+Ks 0.9 0.9 0.9
+Ns 200
+Kd 0.824 0.843 0.745
+
+newmtl sudak_pupil
+Ka 1 1 1
+Ks 0.9 0.9 0.9
+Ns 200
+Kd 0.01 0.01 0.01
+

@@ -1,0 +1,42 @@
+newmtl osetr_body
+Ka 1 1 1
+Ks 0.25 0.25 0.25
+Ns 60
+Kd 1 1 1
+map_Kd osetr_body.png
+map_Bump osetr_body_normal.png
+
+newmtl osetr_fin_d
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 1 1 1
+map_Kd osetr_fin_d.png
+map_d osetr_fin_d.png
+
+newmtl osetr_fin_p
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 1 1 1
+map_Kd osetr_fin_p.png
+map_d osetr_fin_p.png
+
+newmtl osetr_skin
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 0.510 0.490 0.412
+
+newmtl osetr_eye
+Ka 1 1 1
+Ks 0.9 0.9 0.9
+Ns 200
+Kd 0.745 0.627 0.275
+
+newmtl osetr_pupil
+Ka 1 1 1
+Ks 0.9 0.9 0.9
+Ns 200
+Kd 0.01 0.01 0.01
+

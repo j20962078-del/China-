@@ -1,0 +1,42 @@
+newmtl sazan_body
+Ka 1 1 1
+Ks 0.25 0.25 0.25
+Ns 60
+Kd 1 1 1
+map_Kd sazan_body.png
+map_Bump sazan_body_normal.png
+
+newmtl sazan_fin_d
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 1 1 1
+map_Kd sazan_fin_d.png
+map_d sazan_fin_d.png
+
+newmtl sazan_fin_p
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 1 1 1
+map_Kd sazan_fin_p.png
+map_d sazan_fin_p.png
+
+newmtl sazan_skin
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 0.588 0.490 0.235
+
+newmtl sazan_eye
+Ka 1 1 1
+Ks 0.9 0.9 0.9
+Ns 200
+Kd 0.745 0.627 0.275
+
+newmtl sazan_pupil
+Ka 1 1 1
+Ks 0.9 0.9 0.9
+Ns 200
+Kd 0.01 0.01 0.01
+

@@ -1,0 +1,42 @@
+newmtl ersh_body
+Ka 1 1 1
+Ks 0.25 0.25 0.25
+Ns 60
+Kd 1 1 1
+map_Kd ersh_body.png
+map_Bump ersh_body_normal.png
+
+newmtl ersh_fin_d
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 1 1 1
+map_Kd ersh_fin_d.png
+map_d ersh_fin_d.png
+
+newmtl ersh_fin_p
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 1 1 1
+map_Kd ersh_fin_p.png
+map_d ersh_fin_p.png
+
+newmtl ersh_skin
+Ka 1 1 1
+Ks 0.1 0.1 0.1
+Ns 20
+Kd 0.667 0.588 0.275
+
+newmtl ersh_eye
+Ka 1 1 1
+Ks 0.9 0.9 0.9
+Ns 200
+Kd 0.588 0.784 0.588
+
+newmtl ersh_pupil
+Ka 1 1 1
+Ks 0.9 0.9 0.9
+Ns 200
+Kd 0.01 0.01 0.01
+
