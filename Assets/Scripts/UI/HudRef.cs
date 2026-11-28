@@ -28,6 +28,7 @@ namespace ChinaFishing
         RawImage mini; Text clockT, tempT, coordT, chatT, northT;
         CanvasGroup chatGroup; RectTransform chatBox, inputRow;
         InputField input;
+        Image weatherImg; Text levelT, bagCount;
         Button standBtn; Text guideT; RectTransform arrowR; Image[] slotImg = new Image[RodStands.Max]; Text[] slotTxt = new Text[RodStands.Max];
         readonly List<string> lines = new List<string>();
         float lastMsg = -100f;
@@ -53,6 +54,38 @@ namespace ChinaFishing
             }
         }
 
+
+        // ---------- иконки (свои, белые линейные; лежат в Resources/UI/Icons как PNG-байты) ----------
+        static readonly Dictionary<string, Sprite> icons = new Dictionary<string, Sprite>();
+        public static Sprite Icon(string n)
+        {
+            Sprite sp;
+            if (icons.TryGetValue(n, out sp)) return sp;
+            var ta = Resources.Load<TextAsset>("UI/Icons/" + n);
+            if (ta == null) return null;
+            var t = new Texture2D(2, 2, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+            t.LoadImage(ta.bytes);
+            sp = Sprite.Create(t, new Rect(0, 0, t.width, t.height), new Vector2(0.5f, 0.5f), 100f);
+            icons[n] = sp;
+            return sp;
+        }
+
+        // Круглая (или скруглённая) подложка + белый значок; возвращает кнопку
+        static Button IconBtn(Transform parent, string icon, bool round, Vector2 anchor, Vector2 pos, float size, UnityEngine.Events.UnityAction click, out Image glyph)
+        {
+            var back = UIKit.Img(parent, new Color(0, 0, 0, 0.38f), !round);
+            if (round) back.sprite = Circle;
+            back.raycastTarget = true;
+            UIKit.At(back.rectTransform, anchor, pos, new Vector2(size, size));
+            var b = back.gameObject.AddComponent<Button>(); b.targetGraphic = back;
+            if (click != null) b.onClick.AddListener(click);
+            b.onClick.AddListener(() => { if (AudioManager.I != null) AudioManager.I.Click(); });
+            glyph = UIKit.Img(back.transform, Color.white, false);
+            glyph.sprite = Icon(icon); glyph.preserveAspect = true;
+            UIKit.Stretch(glyph.rectTransform, size * 0.16f, size * 0.16f, size * 0.16f, size * 0.16f);
+            return b;
+        }
+
         public static HudRef Build(RectTransform hud)
         {
             var go = UIKit.R("HUD как на референсе", hud);
@@ -63,6 +96,7 @@ namespace ChinaFishing
             h.BuildChat(go);
             RodStands.Create();
             h.BuildStands(go);
+            h.BuildTop(go);
             h.Post("Система", "Добро пожаловать на озеро!");
             return h;
         }
@@ -74,6 +108,9 @@ namespace ChinaFishing
             var ring = UIKit.Img(p, new Color(0, 0, 0, 0.55f), false); ring.sprite = Circle;
             UIKit.At(ring.rectTransform, new Vector2(0, 1), new Vector2(20, -20), new Vector2(S + 12, S + 12));
 
+            ring.raycastTarget = true;
+            var rb = ring.gameObject.AddComponent<Button>(); rb.targetGraphic = ring;
+            rb.onClick.AddListener(() => { if (GameUI.I != null) GameUI.I.OpenMap(); });
             var mask = UIKit.Img(ring.transform, Color.white, false); mask.sprite = Circle;
             mask.rectTransform.anchorMin = mask.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             mask.rectTransform.sizeDelta = new Vector2(S, S);
@@ -164,16 +201,50 @@ namespace ChinaFishing
         }
 
 
+
+        // ---------- верхняя правая часть как на референсе ----------
+        void BuildTop(RectTransform p)
+        {
+            Image g;
+            var ui = GameUI.I;
+            var A = new Vector2(1, 1);
+            IconBtn(p, "gear", true, A, new Vector2(-20, -20), 90, () => ui.OpenSettings(), out g);
+            weatherImg = UIKit.Img(p, Color.white, false); weatherImg.sprite = Icon("sun"); weatherImg.preserveAspect = true;
+            UIKit.At(weatherImg.rectTransform, A, new Vector2(-124, -20), new Vector2(90, 90));
+            // уровень в ромбе
+            var dia = UIKit.Img(p, Color.white, false); dia.sprite = Icon("level"); dia.preserveAspect = true;
+            UIKit.At(dia.rectTransform, A, new Vector2(-232, -14), new Vector2(104, 104));
+            levelT = UIKit.Txt(dia.transform, "1", 46, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold); UIKit.Stretch(levelT.rectTransform);
+            levelT.gameObject.AddComponent<Shadow>().effectColor = new Color(0, 0, 0, 0.9f);
+
+            // нижний ряд: меню, садок (открывает рюкзак), рюкзак
+            IconBtn(p, "backpack", true, A, new Vector2(-20, -130), 90, () => ui.OpenInventory(), out g);
+            IconBtn(p, "keepnet", true, A, new Vector2(-124, -130), 90, () => ui.OpenInventory(), out g);
+            bagCount = UIKit.Txt(p, "0", 28, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.At(bagCount.rectTransform, A, new Vector2(-124, -222), new Vector2(90, 32));
+            bagCount.gameObject.AddComponent<Shadow>().effectColor = new Color(0, 0, 0, 0.9f);
+            IconBtn(p, "menu", true, A, new Vector2(-228, -130), 90, () => GameManager.I.ToMenu(), out g);
+
+            // «глаз» — вид от первого/третьего лица, справа по центру
+            IconBtn(p, "eye", true, new Vector2(1, 0.5f), new Vector2(-30, 40), 100, () =>
+            {
+                var rg = GameManager.I != null ? GameManager.I.rig : null;
+                if (rg != null) rg.SetFirstPerson(!rg.firstPerson);
+            }, out g);
+        }
+
         // ---------- подставки: слоты 1-3, кнопка, стрелка «вернуться к удочке» ----------
         void BuildStands(RectTransform p)
         {
             for (int i = 0; i < RodStands.Max; i++)
             {
                 int slot = i + 1;
-                var b = UIKit.Btn(p, "", new Color(0, 0, 0, 0.45f), () => GuideTo(slot), 26);
-                UIKit.At(b.GetComponent<RectTransform>(), new Vector2(1, 1), new Vector2(-20 - (RodStands.Max - 1 - i) * 92, -130), new Vector2(80, 80));
+                Image gl;
+                var b = IconBtn(p, "slot", false, new Vector2(1, 1), new Vector2(-352 - (RodStands.Max - 1 - i) * 92, -20), 84, () => GuideTo(slot), out gl);
                 slotImg[i] = b.GetComponent<Image>();
-                slotTxt[i] = b.GetComponentInChildren<Text>();
+                var nt = UIKit.Txt(b.transform, (i + 1).ToString(), 26, Color.white, TextAnchor.LowerRight, FontStyle.Bold);
+                UIKit.Stretch(nt.rectTransform, 4, 2, 8, 2);
+                slotTxt[i] = nt;
             }
 
             standBtn = UIKit.Btn(p, "Поставить подставку", UIKit.Panel2, OnStand, 28);
@@ -282,6 +353,9 @@ namespace ChinaFishing
             }
 
             UpdateStands();
+            if (levelT != null) levelT.text = Game.S.level.ToString();
+            if (bagCount != null) bagCount.text = Game.S.fishBag.Count.ToString();
+            if (weatherImg != null && at != null) weatherImg.sprite = at.IsRaining ? Icon("rain") : (at.Night > 0.5f ? Icon("moon") : Icon("sun"));
 
             // сектор: 10×10 клеток карты, внутри клетки ещё 10×10 → «Д4-37»
             coordT.text = GridCoord.Format(uv);

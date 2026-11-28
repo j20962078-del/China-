@@ -67,6 +67,10 @@ namespace ChinaFishing
             if (I == this) I = null;
         }
 
+        public void OpenInventory() { Open(invR, true); }
+        public void OpenMap() { Open(mapR, true); }
+        public void OpenSettings() { Open(setR, true); }
+
         public bool HasPanel { get { return currentPanel != null || (UIManager.I != null && UIManager.I.IsOpen); } }
 
         public RectTransform SafeRoot { get { return safe; } }
@@ -145,15 +149,7 @@ namespace ChinaFishing
             var xpBg = UIKit.Img(top.transform, new Color(0, 0, 0, 0.5f)); UIKit.At(xpBg.rectTransform, new Vector2(0, 0), new Vector2(24, 14), new Vector2(472, 16));
             xpFill = UIKit.Img(xpBg.transform, UIKit.Green); xpFill.rectTransform.anchorMin = Vector2.zero; xpFill.rectTransform.anchorMax = new Vector2(0.5f, 1); xpFill.rectTransform.offsetMin = xpFill.rectTransform.offsetMax = Vector2.zero;
 
-            B(hudR, "Меню", UIKit.PanelC, new Vector2(1, 1), new Vector2(-20, -20), new Vector2(210, 90), () => GameManager.I.ToMenu(), 34);
-            B(hudR, "Рюкзак", UIKit.Panel2, new Vector2(1, 1), new Vector2(-250, -20), new Vector2(210, 90), () => Open(invR, true), 34);
-            B(hudR, "Карта", UIKit.Panel2, new Vector2(1, 1), new Vector2(-480, -20), new Vector2(210, 90), () => Open(mapR, true), 34);
-            B(hudR, "Настройки", UIKit.Panel2, new Vector2(1, 1), new Vector2(-710, -20), new Vector2(260, 90), () => Open(setR, true), 34);
-            B(hudR, "Вид", UIKit.Panel2, new Vector2(1, 1), new Vector2(-990, -20), new Vector2(250, 90), () =>
-            {
-                var rg = GameManager.I != null ? GameManager.I.rig : null;
-                if (rg != null) rg.SetFirstPerson(!rg.firstPerson);
-            }, 34);
+            // верхние кнопки теперь иконки (HudRef.BuildTop): настройки, рюкзак/садок, меню, вид; карта — нажатие на миникарту
 
             // сообщения
             var mb = UIKit.Img(hudR, new Color(0, 0, 0, 0.55f)); UIKit.At(mb.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -170), new Vector2(1100, 90));
