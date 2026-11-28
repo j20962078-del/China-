@@ -28,7 +28,7 @@ namespace ChinaFishing
         RawImage mini; Text clockT, tempT, coordT, chatT, northT;
         CanvasGroup chatGroup; RectTransform chatBox, inputRow;
         InputField input;
-        Image weatherImg; Text levelT, bagCount;
+        Image weatherImg, xpRing; Text levelT, bagCount, ringLvl, ringXp;
         Button standBtn; Text guideT; RectTransform arrowR; Image[] slotImg = new Image[RodStands.Max]; Text[] slotTxt = new Text[RodStands.Max];
         readonly List<string> lines = new List<string>();
         float lastMsg = -100f;
@@ -225,6 +225,19 @@ namespace ChinaFishing
             bagCount.gameObject.AddComponent<Shadow>().effectColor = new Color(0, 0, 0, 0.9f);
             IconBtn(p, "menu", true, A, new Vector2(-228, -130), 90, () => GameManager.I.ToMenu(), out g);
 
+            IconBtn(p, "rodhand", true, A, new Vector2(-332, -130), 90, () => ui.NextBait(), out g);
+
+            // кольцо уровня и опыта слева внизу
+            var back = UIKit.Img(p, new Color(0, 0, 0, 0.38f), false); back.sprite = Circle;
+            UIKit.At(back.rectTransform, new Vector2(0, 0), new Vector2(30, 30), new Vector2(130, 130));
+            var track = UIKit.Img(back.transform, new Color(1, 1, 1, 0.25f), false); track.sprite = Icon("ring"); UIKit.Stretch(track.rectTransform, 4, 4, 4, 4);
+            xpRing = UIKit.Img(back.transform, Color.white, false); xpRing.sprite = Icon("ring"); UIKit.Stretch(xpRing.rectTransform, 4, 4, 4, 4);
+            xpRing.type = Image.Type.Filled; xpRing.fillMethod = Image.FillMethod.Radial360; xpRing.fillOrigin = 2; xpRing.fillClockwise = true;
+            ringLvl = UIKit.Txt(back.transform, "1", 44, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.At(ringLvl.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, 8), new Vector2(110, 50)); ringLvl.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            ringXp = UIKit.Txt(back.transform, "", 17, new Color(1, 1, 1, 0.85f), TextAnchor.MiddleCenter);
+            UIKit.At(ringXp.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -26), new Vector2(120, 24)); ringXp.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+
             // «глаз» — вид от первого/третьего лица, справа по центру
             IconBtn(p, "eye", true, new Vector2(1, 0.5f), new Vector2(-30, 40), 100, () =>
             {
@@ -354,6 +367,13 @@ namespace ChinaFishing
 
             UpdateStands();
             if (levelT != null) levelT.text = Game.S.level.ToString();
+            if (ringLvl != null)
+            {
+                int need = Mathf.Max(1, GameData.XpForLevel(Game.S.level));
+                ringLvl.text = Game.S.level.ToString();
+                ringXp.text = Game.S.xp + "/" + need;
+                xpRing.fillAmount = Mathf.Clamp01(Game.S.xp / (float)need);
+            }
             if (bagCount != null) bagCount.text = Game.S.fishBag.Count.ToString();
             if (weatherImg != null && at != null) weatherImg.sprite = at.IsRaining ? Icon("rain") : (at.Night > 0.5f ? Icon("moon") : Icon("sun"));
 

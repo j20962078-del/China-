@@ -67,6 +67,7 @@ namespace ChinaFishing
             if (I == this) I = null;
         }
 
+        public void NextBait() { CycleBait(); }
         public void OpenInventory() { Open(invR, true); }
         public void OpenMap() { Open(mapR, true); }
         public void OpenSettings() { Open(setR, true); }
@@ -138,7 +139,7 @@ namespace ChinaFishing
             jk.rectTransform.anchorMin = jk.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             joyArea.gameObject.AddComponent<VirtualJoystick>().Setup(joyArea, jb.rectTransform, jk.rectTransform);
             // подсказка где джойстик
-            var jh = UIKit.Img(joyArea, new Color(1, 1, 1, 0.1f)); UIKit.At(jh.rectTransform, new Vector2(0, 0), new Vector2(120, 120), new Vector2(240, 240));
+            var jh = UIKit.Img(joyArea, new Color(1, 1, 1, 0.1f)); UIKit.At(jh.rectTransform, new Vector2(0, 0), new Vector2(120, 250), new Vector2(240, 240));
             jh.gameObject.name = "Подсказка джойстика";
             jh.sprite = HudRef.Circle; jh.type = Image.Type.Simple;
 
