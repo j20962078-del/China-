@@ -934,28 +934,20 @@ namespace ChinaFishing
         }
 
         // ---------------- ДОБЫЧА ----------------
-        Text resTitle, resInfo; RawImage resPreview; Button resSell, resRelease, resKeep;
+        CatchCardUI catchCard;
+        void CloseResult() { FishPreview.SetAllActive(false); resR.gameObject.SetActive(false); Inp.UiBlocking = false; }
+
         void BuildResult()
         {
             resR = Full("Улов");
-            var dim = UIKit.R("Фон", resR); UIKit.Stretch(dim); dim.gameObject.AddComponent<Image>().color = new Color(0, 0.04f, 0.08f, 0.55f);
-            var box = UIKit.Img(resR, UIKit.PanelC); UIKit.At(box.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1000, 760)); box.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            resTitle = Label(box.transform, "", 56, new Vector2(0.5f, 1), new Vector2(0, -20), new Vector2(940, 80), TextAnchor.MiddleCenter, UIKit.Accent, FontStyle.Bold); resTitle.rectTransform.pivot = new Vector2(0.5f, 1);
-            var pv = UIKit.R("Просмотр", box.transform); UIKit.At(pv, new Vector2(0.5f, 1), new Vector2(0, -110), new Vector2(560, 280)); pv.pivot = new Vector2(0.5f, 1);
-            resPreview = pv.gameObject.AddComponent<RawImage>(); resPreview.raycastTarget = false;
-            resInfo = Label(box.transform, "", 34, new Vector2(0.5f, 1), new Vector2(0, -400), new Vector2(940, 200), TextAnchor.UpperCenter); resInfo.rectTransform.pivot = new Vector2(0.5f, 1);
-            resSell = B(box.transform, "Продать", UIKit.Green, new Vector2(0, 0), new Vector2(30, 30), new Vector2(290, 110), () => { FishPreview.SetAllActive(false); resR.gameObject.SetActive(false); Inp.UiBlocking = false; FishingController.I.SellCatch(); }, 32);
-            resKeep = B(box.transform, "В садок", UIKit.Accent, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(290, 110), () => { FishPreview.SetAllActive(false); resR.gameObject.SetActive(false); Inp.UiBlocking = false; FishingController.I.KeepCatch(); }, 32);
-            resRelease = B(box.transform, "Отпустить", UIKit.Blue, new Vector2(1, 0), new Vector2(-30, 30), new Vector2(290, 110), () => { FishPreview.SetAllActive(false); resR.gameObject.SetActive(false); Inp.UiBlocking = false; FishingController.I.ReleaseCatch(); }, 32);
+            catchCard = CatchCardUI.Create(resR,
+                () => { CloseResult(); FishingController.I.KeepCatch(); },
+                () => { CloseResult(); FishingController.I.ReleaseCatch(); });
         }
 
         void ShowResult(CatchResult r)
         {
-            var p = FishPreview.Get(r.fish); p.SetActive(true); resPreview.texture = p.Texture;
-            resTitle.text = r.firstTime ? "Новый вид: " + r.fish.name + "!" : "Поймана: " + r.fish.name + (r.record ? "  (рекорд!)" : "");
-            resInfo.text = "Вес: " + r.weight.ToString("0.00") + " кг     Размер: " + r.length.ToString("0") + " см\nРедкость: " + r.fish.rarity +
-                           "\nОпыт: +" + r.xp + (r.levelUp ? "     НОВЫЙ УРОВЕНЬ " + Game.S.level + "! Награда выдана" : "") +
-                           "\nЦена продажи: " + r.value + " серебра";
+            catchCard.Present(r);
             resR.gameObject.SetActive(true); Inp.UiBlocking = true; Inp.Move = Vector2.zero;
             resR.SetAsLastSibling();
         }
