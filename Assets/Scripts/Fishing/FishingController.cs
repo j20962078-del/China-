@@ -12,6 +12,9 @@ namespace ChinaFishing
     }
 
     // Цикл: Готов → Замах → Заброс → Ожидание → Поклёвка → (подсечка) → Вываживание → Итог → Готов
+    // Заброс, переданный подставке (или взятый с неё)
+    public class StandCast { public float x, z, weight, length, waitLeft; public string fishId = ""; }
+
     public class FishingController : MonoBehaviour
     {
         public static FishingController I;
@@ -260,6 +263,69 @@ namespace ChinaFishing
             var p = Vector3.Lerp(castStart, target, t);
             p.y += Mathf.Sin(t * Mathf.PI) * (2f + castDistance * 0.12f);
             bobber.position = p;
+        }
+
+
+        // ---------------- ПОДСТАВКИ ----------------
+        public bool PrepareBait() { return EnsureBait(); }
+
+        // Новый «бросок кубика» для подставки: какая рыба придёт к точке (x, z) и через сколько секунд (по текущим снастям)
+        public StandCast RollForStand(float x, float z)
+        {
+            var oldT = target; var oldG = groundbaitActive; var oldR = hookRisk;
+            target = new Vector3(x, WorldBuilder.WaterLevel, z); groundbaitActive = false;
+            float w, l; var f = PickFish(out w, out l);
+            var c = new StandCast { x = x, z = z };
+            if (f != null)
+            {
+                c.fishId = f.id; c.weight = w; c.length = l;
+                c.waitLeft = Random.Range(10f, 30f) / Efficiency() * (GameData.Likes(f, Bait) ? 0.7f : 1.4f);
+            }
+            else c.waitLeft = 30f;
+            target = oldT; groundbaitActive = oldG; hookRisk = oldR;
+            return c;
+        }
+
+        // Удочка с наживкой в воде (ожидание) переходит на подставку; руки свободны
+        public bool DetachToStand(out StandCast c)
+        {
+            c = null;
+            if (state != FState.Ожидание) return false;
+            c = new StandCast
+            {
+                x = bobberPos.x, z = bobberPos.z,
+                fishId = (!noFishHere && hooked != null) ? hooked.id : "",
+                weight = hookedWeight, length = hookedLength, waitLeft = Mathf.Max(1f, waitTimer)
+            };
+            StopFishing();
+            return true;
+        }
+
+        // Игрок берёт удочку с подставки: если рыба клюёт — сразу окно подсечки, иначе ожидание дальше
+        public void TakeFromStand(StandCast c, bool biting)
+        {
+            if (state != FState.Нет || player == null || cam == null) return;
+            var f = string.IsNullOrEmpty(c.fishId) ? null : GameData.GetFish(c.fishId);
+            hooked = f; hookedWeight = c.weight; hookedLength = c.length; noFishHere = f == null;
+            hookRisk = f != null && c.weight > HookMax;
+            target = new Vector3(c.x, WorldBuilder.WaterLevel, c.z); bobberPos = target;
+            player.fishingPose = true; cam.fishingView = true;
+            bobber.gameObject.SetActive(true); line.enabled = true;
+            bobber.position = new Vector3(c.x, WorldBuilder.WaterLevel + 0.03f, c.z);
+            if (biting && f != null)
+            {
+                biteTimer = 3.5f; biteWindowLeft = biteTimer;
+                AudioManager.I?.Bite();
+                SetState(FState.Поклёвка);
+                Bite().Nibble(1.4f);
+                Msg("Клюёт! Быстро нажмите «Подсечка»!");
+            }
+            else
+            {
+                waitTimer = Mathf.Max(1f, c.waitLeft); nibbleTimer = 2f;
+                SetState(FState.Ожидание);
+                Msg("Удочка в руках. Ожидайте поклёвку…");
+            }
         }
 
         // ---------------- ОЖИДАНИЕ И ПОКЛЁВКА ----------------

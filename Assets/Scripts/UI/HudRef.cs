@@ -290,18 +290,19 @@ namespace ChinaFishing
 
         void OnStand()
         {
-            var gm = GameManager.I; var rs = RodStands.I;
+            var gm = GameManager.I; var rs = RodStands.I; var fc = FishingController.I;
+            if (fc != null && fc.state == FState.Ожидание)
+            {
+                var st = rs.PlaceFromHand();
+                if (st != null && GameUI.I != null) GameUI.I.Toast(RodStands.NameOf(st.slot) + " на подставке · " + GridCoord.Format(rs.PosOf(st)));
+                return;
+            }
             var near = rs.Nearest(gm.player.transform.position, 2.5f);
             if (near != null)
             {
-                rs.Take(near);
-                if (GameUI.I != null) GameUI.I.Toast(RodStands.NameOf(near.slot) + " взята");
-            }
-            else
-            {
-                float yaw = gm.rig != null ? gm.rig.yaw : gm.player.transform.eulerAngles.y;
-                var st = rs.Place(gm.player.transform.position, yaw);
-                if (st != null && GameUI.I != null) GameUI.I.Toast(RodStands.NameOf(st.slot) + " сохранена · " + GridCoord.Format(rs.PosOf(st)));
+                int slot = near.slot;
+                rs.TakeToHand(near);
+                if (GameUI.I != null && fc != null && fc.state == FState.Нет) GameUI.I.Toast(RodStands.NameOf(slot) + " убрана");
             }
         }
 
@@ -312,18 +313,23 @@ namespace ChinaFishing
             var f = FishingController.I;
             var pp = gm.player.transform.position;
 
-            // контекстная кнопка — только когда не рыбачим
-            bool idle = f == null || f.state == FState.Нет;
+            // контекстная кнопка: «на подставку» (удочка заброшена и ждёт) или «взять удочку» (рядом подставка, руки свободны)
             var near = rs.Nearest(pp, 2.5f);
-            bool show = idle && (near != null || rs.CanPlace);
+            bool waiting = f != null && f.state == FState.Ожидание;
+            bool idle = f == null || f.state == FState.Нет;
+            bool show = (waiting && rs.CanPlace) || (idle && near != null);
             if (standBtn.gameObject.activeSelf != show) standBtn.gameObject.SetActive(show);
-            if (show) UIKit.SetLabel(standBtn, near != null ? "Взять подставку" : "Поставить подставку");
+            if (show) UIKit.SetLabel(standBtn, waiting ? "Поставить на подставку" : (rs.IsBiting(near) ? "КЛЮЁТ! Взять удочку" : "Взять удочку"));
 
-            // слоты 1-3
+            // слоты 1-3: зелёный — удочка ждёт, красный мигает — клюёт, жёлтый — к ней ведёт стрелка
             for (int i = 0; i < RodStands.Max; i++)
             {
-                bool on = rs.Get(i + 1) != null;
-                slotImg[i].color = rs.guideSlot == i + 1 ? UIKit.Accent : (on ? new Color(0.2f, 0.7f, 0.42f, 0.8f) : new Color(0, 0, 0, 0.45f));
+                var sd = rs.Get(i + 1);
+                bool on = sd != null;
+                Color c = on ? new Color(0.2f, 0.7f, 0.42f, 0.8f) : new Color(0, 0, 0, 0.45f);
+                if (rs.guideSlot == i + 1) c = UIKit.Accent;
+                if (rs.IsBiting(sd)) c = Color.Lerp(new Color(0.9f, 0.15f, 0.1f, 0.95f), new Color(1f, 0.6f, 0.2f, 0.95f), Mathf.PingPong(Time.unscaledTime * 3f, 1f));
+                slotImg[i].color = c;
                 slotTxt[i].text = (i + 1).ToString();
             }
 
