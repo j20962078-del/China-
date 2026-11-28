@@ -94,6 +94,7 @@ namespace ChinaFishing
             I = h;
             h.BuildMini(go);
             h.BuildChat(go);
+            ChatClient.Create(h);
             RodStands.Create();
             h.BuildStands(go);
             h.BuildTop(go);
@@ -186,14 +187,18 @@ namespace ChinaFishing
             if (s.Length > 0)
             {
                 if (OnSend != null) OnSend(s);
-                Post("Вы", s);
+                if (ChatClient.I == null || !ChatClient.I.Send(s))
+                {
+                    Post("Вы", s);
+                    Post("Система", "Войдите в аккаунт, чтобы писать в общий чат.");
+                }
             }
             inputRow.gameObject.SetActive(false);
         }
 
-        public void Post(string nick, string text)
+        public void Post(string nick, string text, bool mine = false)
         {
-            Color c = nick == "Вы" ? Color.white : NickColors[Mathf.Abs(nick.GetHashCode()) % NickColors.Length];
+            Color c = (mine || nick == "Вы") ? Color.white : NickColors[Mathf.Abs(nick.GetHashCode()) % NickColors.Length];
             lines.Add("<color=#" + ColorUtility.ToHtmlStringRGB(c) + ">" + nick + ":</color> " + text);
             while (lines.Count > MaxLines) lines.RemoveAt(0);
             lastMsg = Time.unscaledTime;
