@@ -856,6 +856,16 @@ namespace ChinaFishing
                 b.gameObject.AddComponent<LayoutElement>().preferredHeight = 90;
                 n++;
             }
+            if (RodStands.I != null)
+                foreach (var st in new List<StandData>(RodStands.I.Items))
+                {
+                    var st_ = st;
+                    var mk = UIKit.Img(mapImgR, UIKit.Accent); mk.rectTransform.sizeDelta = new Vector2(30, 30);
+                    mk.rectTransform.anchorMin = mk.rectTransform.anchorMax = Vector2.zero; mk.rectTransform.anchoredPosition = MapPos(RodStands.I.PosOf(st));
+                    var sb = UIKit.Btn(mapSpots, RodStands.NameOf(st.slot) + " · " + GridCoord.Format(RodStands.I.PosOf(st)) + " — вести", UIKit.Panel2, () =>
+                    { RodStands.I.guideSlot = st_.slot; Toast("Стрелка ведёт к: " + RodStands.NameOf(st_.slot)); }, 32);
+                    sb.gameObject.AddComponent<LayoutElement>().preferredHeight = 90;
+                }
             var note = UIKit.Txt(mapSpots, "Жёлтая точка — вы. Синие точки — места у воды, зелёные — прочие места. На карте — план реки Амур из архива.", 28, UIKit.Dim, TextAnchor.UpperLeft);
             note.gameObject.AddComponent<LayoutElement>().preferredHeight = 120;
         }

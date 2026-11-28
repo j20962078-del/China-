@@ -17,7 +17,6 @@ namespace ChinaFishing
 
         const int MaxLines = 5;
         const float FadeAfter = 8f, HideAfter = 15f;
-        static readonly string[] Cols = { "А", "Б", "В", "Г", "Д", "Е", "Ж", "З", "И", "К" };
         static readonly Color[] NickColors =
         {
             new Color(0.49f, 0.82f, 0.49f), new Color(0.91f, 0.83f, 0.42f), new Color(0.44f, 0.76f, 0.91f),
@@ -29,6 +28,7 @@ namespace ChinaFishing
         RawImage mini; Text clockT, tempT, coordT, chatT, northT;
         CanvasGroup chatGroup; RectTransform chatBox, inputRow;
         InputField input;
+        Button standBtn; Text guideT; RectTransform arrowR; Image[] slotImg = new Image[RodStands.Max]; Text[] slotTxt = new Text[RodStands.Max];
         readonly List<string> lines = new List<string>();
         float lastMsg = -100f;
 
@@ -61,6 +61,8 @@ namespace ChinaFishing
             I = h;
             h.BuildMini(go);
             h.BuildChat(go);
+            RodStands.Create();
+            h.BuildStands(go);
             h.Post("Система", "Добро пожаловать на озеро!");
             return h;
         }
@@ -161,6 +163,94 @@ namespace ChinaFishing
             if (chatT != null) chatT.text = string.Join("\n", lines.ToArray());
         }
 
+
+        // ---------- подставки: слоты 1-3, кнопка, стрелка «вернуться к удочке» ----------
+        void BuildStands(RectTransform p)
+        {
+            for (int i = 0; i < RodStands.Max; i++)
+            {
+                int slot = i + 1;
+                var b = UIKit.Btn(p, "", new Color(0, 0, 0, 0.45f), () => GuideTo(slot), 26);
+                UIKit.At(b.GetComponent<RectTransform>(), new Vector2(1, 1), new Vector2(-20 - (RodStands.Max - 1 - i) * 92, -130), new Vector2(80, 80));
+                slotImg[i] = b.GetComponent<Image>();
+                slotTxt[i] = b.GetComponentInChildren<Text>();
+            }
+
+            standBtn = UIKit.Btn(p, "Поставить подставку", UIKit.Panel2, OnStand, 28);
+            UIKit.At(standBtn.GetComponent<RectTransform>(), new Vector2(1, 0), new Vector2(-40, 210), new Vector2(300, 90));
+            standBtn.gameObject.SetActive(false);
+
+            var ar = UIKit.Txt(p, "▲", 54, UIKit.Accent, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.At(ar.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -260), new Vector2(70, 70));
+            ar.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            ar.gameObject.AddComponent<Shadow>().effectColor = new Color(0, 0, 0, 0.9f);
+            arrowR = ar.rectTransform; arrowR.gameObject.SetActive(false);
+
+            guideT = UIKit.Txt(p, "", 30, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            UIKit.At(guideT.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -300), new Vector2(700, 40));
+            guideT.gameObject.AddComponent<Shadow>().effectColor = new Color(0, 0, 0, 0.9f);
+        }
+
+        void GuideTo(int slot)
+        {
+            var st = RodStands.I.Get(slot);
+            if (st == null) { if (GameUI.I != null) GameUI.I.Toast("Подставка " + slot + " не установлена"); return; }
+            RodStands.I.guideSlot = RodStands.I.guideSlot == slot ? 0 : slot;   // повторное нажатие выключает стрелку
+            if (GameUI.I != null && RodStands.I.guideSlot != 0) GameUI.I.Toast(RodStands.NameOf(slot) + " · " + GridCoord.Format(RodStands.I.PosOf(st)));
+        }
+
+        void OnStand()
+        {
+            var gm = GameManager.I; var rs = RodStands.I;
+            var near = rs.Nearest(gm.player.transform.position, 2.5f);
+            if (near != null)
+            {
+                rs.Take(near);
+                if (GameUI.I != null) GameUI.I.Toast(RodStands.NameOf(near.slot) + " взята");
+            }
+            else
+            {
+                float yaw = gm.rig != null ? gm.rig.yaw : gm.player.transform.eulerAngles.y;
+                var st = rs.Place(gm.player.transform.position, yaw);
+                if (st != null && GameUI.I != null) GameUI.I.Toast(RodStands.NameOf(st.slot) + " сохранена · " + GridCoord.Format(rs.PosOf(st)));
+            }
+        }
+
+        void UpdateStands()
+        {
+            var gm = GameManager.I; var rs = RodStands.I;
+            if (rs == null) return;
+            var f = FishingController.I;
+            var pp = gm.player.transform.position;
+
+            // контекстная кнопка — только когда не рыбачим
+            bool idle = f == null || f.state == FState.Нет;
+            var near = rs.Nearest(pp, 2.5f);
+            bool show = idle && (near != null || rs.CanPlace);
+            if (standBtn.gameObject.activeSelf != show) standBtn.gameObject.SetActive(show);
+            if (show) UIKit.SetLabel(standBtn, near != null ? "Взять подставку" : "Поставить подставку");
+
+            // слоты 1-3
+            for (int i = 0; i < RodStands.Max; i++)
+            {
+                bool on = rs.Get(i + 1) != null;
+                slotImg[i].color = rs.guideSlot == i + 1 ? UIKit.Accent : (on ? new Color(0.2f, 0.7f, 0.42f, 0.8f) : new Color(0, 0, 0, 0.45f));
+                slotTxt[i].text = (i + 1).ToString();
+            }
+
+            // стрелка к цели
+            var g = rs.guideSlot != 0 ? rs.Get(rs.guideSlot) : null;
+            if (g == null) { arrowR.gameObject.SetActive(false); guideT.text = ""; return; }
+            Vector3 to = rs.PosOf(g) - pp; to.y = 0;
+            float dist = to.magnitude;
+            if (dist < 4f) { rs.guideSlot = 0; if (GameUI.I != null) GameUI.I.Toast("Вы у подставки " + g.slot); return; }
+            float camYaw = gm.cam != null ? gm.cam.transform.eulerAngles.y : 0f;
+            float bearing = Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg;
+            arrowR.gameObject.SetActive(true);
+            arrowR.localEulerAngles = new Vector3(0, 0, -Mathf.DeltaAngle(camYaw, bearing));
+            guideT.text = RodStands.NameOf(g.slot) + " · " + Mathf.RoundToInt(dist) + " м · " + GridCoord.Format(rs.PosOf(g));
+        }
+
         // ---------- обновление ----------
         void Update()
         {
@@ -191,11 +281,10 @@ namespace ChinaFishing
                 tempT.text = temp.ToString("0.0").Replace('.', ',') + "°C" + (at.IsRaining ? "  дождь" : "");
             }
 
+            UpdateStands();
+
             // сектор: 10×10 клеток карты, внутри клетки ещё 10×10 → «Д4-37»
-            float fx = Mathf.Clamp01(uv.x) * 10f, fy = Mathf.Clamp01(uv.y) * 10f;
-            int cx = Mathf.Min(9, Mathf.FloorToInt(fx)), cy = Mathf.Min(9, Mathf.FloorToInt(fy));
-            int sx = Mathf.Min(9, Mathf.FloorToInt((fx - cx) * 10f)), sy = Mathf.Min(9, Mathf.FloorToInt((fy - cy) * 10f));
-            coordT.text = Cols[cx] + (cy + 1) + "-" + sx + sy;
+            coordT.text = GridCoord.Format(uv);
         }
     }
 }
