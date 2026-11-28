@@ -8,6 +8,9 @@ namespace ChinaFishing
     {
         public static GameObject Build(FishDef f, float lengthM)
         {
+            // сначала настоящая 3D-модель из Resources/Fish; если её нет — процедурная рыба из примитивов ниже
+            var real = FishModels.Create(f, lengthM);
+            if (real != null) return real;
             var root = new GameObject("Рыба_" + f.name);
             float L = lengthM;
             float Y = L * f.bodyScale.y / f.bodyScale.x, X = L * f.bodyScale.z / f.bodyScale.x;

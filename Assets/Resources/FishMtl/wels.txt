@@ -1,0 +1,39 @@
+newmtl wels_body
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd wels_body.png
+
+newmtl wels_fin_d
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd wels_fin_d.png
+
+newmtl wels_fin_p
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd wels_fin_p.png
+
+newmtl wels_barbel
+Ka 1 1 1
+Kd 0.100 0.100 0.060
+Ks 0.2 0.2 0.2
+Ns 20
+
+newmtl wels_iris
+Ka 1 1 1
+Kd 0.300 0.250 0.100
+Ks 0.2 0.2 0.2
+Ns 80
+
+newmtl wels_pupil
+Ka 1 1 1
+Kd 0.020 0.020 0.020
+Ks 0.2 0.2 0.2
+Ns 80
+

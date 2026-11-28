@@ -1,0 +1,39 @@
+newmtl carp_body
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd carp_body.png
+
+newmtl carp_fin_d
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd carp_fin_d.png
+
+newmtl carp_fin_p
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd carp_fin_p.png
+
+newmtl carp_barbel
+Ka 1 1 1
+Kd 0.700 0.550 0.250
+Ks 0.2 0.2 0.2
+Ns 20
+
+newmtl carp_iris
+Ka 1 1 1
+Kd 0.780 0.520 0.150
+Ks 0.2 0.2 0.2
+Ns 80
+
+newmtl carp_pupil
+Ka 1 1 1
+Kd 0.020 0.020 0.020
+Ks 0.2 0.2 0.2
+Ns 80
+

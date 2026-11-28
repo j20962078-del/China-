@@ -1,0 +1,33 @@
+newmtl crucian_body
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd crucian_body.png
+
+newmtl crucian_fin_d
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd crucian_fin_d.png
+
+newmtl crucian_fin_p
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd crucian_fin_p.png
+
+newmtl crucian_iris
+Ka 1 1 1
+Kd 0.800 0.550 0.150
+Ks 0.2 0.2 0.2
+Ns 80
+
+newmtl crucian_pupil
+Ka 1 1 1
+Kd 0.020 0.020 0.020
+Ks 0.2 0.2 0.2
+Ns 80
+

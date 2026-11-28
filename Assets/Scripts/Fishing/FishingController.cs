@@ -44,6 +44,8 @@ namespace ChinaFishing
         public float biteWindowLeft;
         float dirTimer, burstTimer, overTension, idleTimer, fishAngle, fishForce, strength;
         GameObject heldFish;
+        FishOnHook fishVis;                 // 3D-рыба под водой во время вываживания
+        float slipRisk, lastTension; bool slipWarned;
         public CatchResult lastResult;
         bool resolved = true;
 
@@ -71,7 +73,10 @@ namespace ChinaFishing
             if (bobber != null) Destroy(bobber.gameObject);
             if (line != null) Destroy(line.gameObject);
             if (heldFish != null) Destroy(heldFish);
+            DestroyFishVis();
         }
+
+        void DestroyFishVis() { if (fishVis != null) Destroy(fishVis.gameObject); fishVis = null; }
 
         // ---------------- СНАСТИ ----------------
         public ItemDef Rod { get { return GameData.GetItem(Game.S.rod); } }
@@ -170,6 +175,7 @@ namespace ChinaFishing
 
         void HideTackle()
         {
+            DestroyFishVis();
             if (bobber != null) bobber.gameObject.SetActive(false);
             if (line != null) line.enabled = false;
         }
@@ -341,6 +347,9 @@ namespace ChinaFishing
             tension = 0.35f; stamina = 1f; overTension = 0f; idleTimer = 0f;
             pullDir = Random.value < 0.5f ? -1 : 1; dirTimer = Random.Range(1.5f, 3f); burstTimer = Random.Range(0.8f, 2f);
             pullBurst = 0f; reeling = false; fishAngle = 0f;
+            DestroyFishVis();
+            fishVis = FishOnHook.Spawn(f, hookedLength / 100f);
+            slipRisk = 0f; lastTension = tension; slipWarned = false;
             Bite().Hook(hookedWeight);   // резкий загиб при подсечке, дальше рывки по весу рыбы
             SetState(FState.Вываживание);
             Msg("Рыба на крючке! Удерживайте «Тянуть» и следите за натяжением.");
@@ -356,6 +365,7 @@ namespace ChinaFishing
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
 
+            var bh = FishBehaviour.For(f.id);
             dirTimer -= dt;
             if (dirTimer <= 0f)
             {
@@ -366,8 +376,8 @@ namespace ChinaFishing
             burstTimer -= dt;
             if (burstTimer <= 0f)
             {
-                pullBurst = Random.Range(0.55f, 1f) * (0.5f + 0.5f * stamina) * Mathf.Min(1.2f, 0.6f + f.resistance * 0.4f);
-                burstTimer = Random.Range(1.4f, 3.6f) / (0.5f + f.aggression);
+                pullBurst = Mathf.Min(1.5f, Random.Range(0.55f, 1f) * (0.5f + 0.5f * stamina) * Mathf.Min(1.2f, 0.6f + f.resistance * 0.4f) * bh.burstPower);
+                burstTimer = Random.Range(1.4f, 3.6f) / ((0.5f + f.aggression) * bh.burstFreq);
                 if (Random.value < 0.25f) pullDir = -pullDir;
             }
             pullBurst = Mathf.MoveTowards(pullBurst, 0.12f + 0.2f * stamina, dt * 0.7f);
@@ -393,6 +403,15 @@ namespace ChinaFishing
             float drain = (reeling && good ? 0.11f : 0.015f) / (0.6f + f.resistance * 0.6f) + pullBurst * 0.03f;
             stamina = Mathf.Clamp01(stamina - drain * dt);
 
+            // срыв с крючка: пока рыба сильна, резкое или слишком сильное натяжение вырывает крючок из губы
+            float jerkRate = Mathf.Max(0f, (tension - lastTension) / dt); lastTension = tension;
+            if (stamina > 0.45f && tension > 0.8f)
+                slipRisk += dt * bh.slip * (0.25f + 0.5f * Mathf.Clamp01(jerkRate / 3f)) * (0.4f + stamina) / Mathf.Max(0.7f, Hook.power);
+            else slipRisk = Mathf.Max(0f, slipRisk - dt * 0.5f);
+            if (slipRisk > 0.55f && !slipWarned) { slipWarned = true; Msg("Крючок вот-вот выскочит — ослабьте натяжение!"); }
+            if (slipRisk < 0.2f) slipWarned = false;
+            if (slipRisk >= 1f) { LoseFish("Рыба сорвалась с крючка: вы тянули слишком резко, пока она ещё сильна."); return; }
+
             if (tension > 1.0f) overTension += dt; else overTension = Mathf.Max(0f, overTension - dt * 0.6f);
             float breakLimit = 0.7f + 0.4f / Mathf.Max(0.6f, ratio);
             if (overTension > breakLimit) { LoseFish("Леска оборвалась! Ослабляйте натяжение, когда рыба рвёт."); return; }
@@ -404,6 +423,7 @@ namespace ChinaFishing
             bobberPos = player.transform.position + fwd * Mathf.Max(dist, 0.5f);
             bobberPos.y = WorldBuilder.WaterLevel;
             player.fightShake = Mathf.Clamp01(tension);
+            if (fishVis != null) fishVis.Tick(bobberPos, player.transform.position, stamina, pullBurst);
             AudioManager.I?.Reel(reeling, 0.8f + tension * 0.7f);
 
             if (dist <= 2.2f)
@@ -453,7 +473,7 @@ namespace ChinaFishing
         void ShowHeldFish(FishDef f, float lenM)
         {
             ClearHeldFish();
-            heldFish = FishModel.Build(f, Mathf.Clamp(lenM, 0.15f, 1.4f));
+            heldFish = FishModel.Build(f, Mathf.Clamp(lenM, 0.15f, 2.4f));
             heldFish.transform.SetParent(player.transform, false);
             heldFish.transform.localPosition = new Vector3(0.15f, 1.2f, 0.7f);
             heldFish.transform.localRotation = Quaternion.Euler(75f, 90f, 0f);

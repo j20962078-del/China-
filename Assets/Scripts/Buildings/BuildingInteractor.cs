@@ -46,6 +46,7 @@ namespace ChinaFishing
                 go.transform.position = new Vector3(pts[i].x, world.Ground(pts[i].x, pts[i].y), pts[i].y);
                 var bi = go.AddComponent<BuildingInteractor>();
                 bi.type = types[i];
+                FishDecor.Spawn(go.transform, types[i]);
             }
         }
 

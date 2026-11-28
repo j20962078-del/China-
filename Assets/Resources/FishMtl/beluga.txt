@@ -1,0 +1,45 @@
+newmtl beluga_body
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd beluga_body.png
+
+newmtl beluga_fin_d
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd beluga_fin_d.png
+
+newmtl beluga_fin_p
+Ka 1 1 1
+Kd 1 1 1
+Ks 0.15 0.15 0.15
+Ns 40
+map_Kd beluga_fin_p.png
+
+newmtl beluga_barbel
+Ka 1 1 1
+Kd 0.800 0.800 0.780
+Ks 0.2 0.2 0.2
+Ns 20
+
+newmtl beluga_scute
+Ka 1 1 1
+Kd 0.750 0.740 0.700
+Ks 0.2 0.2 0.2
+Ns 20
+
+newmtl beluga_iris
+Ka 1 1 1
+Kd 0.250 0.200 0.100
+Ks 0.2 0.2 0.2
+Ns 80
+
+newmtl beluga_pupil
+Ka 1 1 1
+Kd 0.020 0.020 0.020
+Ks 0.2 0.2 0.2
+Ns 80
+
