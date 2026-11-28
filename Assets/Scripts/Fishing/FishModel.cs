@@ -101,11 +101,24 @@ namespace ChinaFishing
             p.cam = cg.AddComponent<Camera>();
             p.cam.fieldOfView = 28f; p.cam.targetTexture = p.rt;
             p.cam.clearFlags = CameraClearFlags.SolidColor;
-            p.cam.backgroundColor = new Color(0.10f, 0.22f, 0.28f, 1f);
+            p.cam.backgroundColor = new Color(0f, 0f, 0f, 0f);   // прозрачный фон: рыба ложится на карточку
             p.cam.nearClipPlane = 0.1f; p.cam.farClipPlane = 10f; p.cam.depth = -20;
             p.cam.enabled = false;
+            // собственный свет: без него превью на рынке/в кафе чёрное (ночью и вдали от солнца света нет совсем)
+            AddLight(go.transform, "Key", new Vector3(-1.6f, 1.4f, -1.8f), new Color(1f, 0.97f, 0.92f), 1.0f);
+            AddLight(go.transform, "Fill", new Vector3(1.8f, -0.4f, -1.6f), new Color(0.75f, 0.85f, 1f), 0.45f);
+            AddLight(go.transform, "Top", new Vector3(0f, 2.2f, 0.5f), Color.white, 0.5f);
             map[f.id] = p;
             return p;
+        }
+
+        static void AddLight(Transform parent, string n, Vector3 localPos, Color c, float intensity)
+        {
+            var lg = new GameObject(n);
+            lg.transform.SetParent(parent, false);
+            lg.transform.localPosition = localPos;
+            var l = lg.AddComponent<Light>();
+            l.type = LightType.Point; l.color = c; l.intensity = intensity; l.range = 8f; l.shadows = LightShadows.None;
         }
 
         void OnDestroy()

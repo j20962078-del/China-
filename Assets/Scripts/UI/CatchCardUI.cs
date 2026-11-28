@@ -110,9 +110,9 @@ namespace ChinaFishing
             holder = new GameObject("FishHolder").transform;
             holder.SetParent(stage, false);
 
-            MakeLight("Key", new Vector3(-2.2f, 1.8f, 0.8f), new Color(1f, 0.96f, 0.9f), 9f);
-            MakeLight("Rim", new Vector3(1.0f, 0.9f, -1.8f), new Color(0.6f, 0.75f, 1f), 5f);
-            MakeLight("Fill", new Vector3(-2.0f, -0.8f, -0.8f), new Color(1f, 0.85f, 0.7f), 2.5f);
+            MakeLight("Key", new Vector3(-2.2f, 1.8f, 0.8f), new Color(1f, 0.96f, 0.9f), 1.1f);
+            MakeLight("Rim", new Vector3(1.0f, 0.9f, -1.8f), new Color(0.6f, 0.75f, 1f), 0.5f);
+            MakeLight("Fill", new Vector3(-2.0f, -0.8f, -0.8f), new Color(1f, 0.85f, 0.7f), 0.3f);
             stage.gameObject.SetActive(false);
         }
 
